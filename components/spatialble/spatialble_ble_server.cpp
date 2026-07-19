@@ -33,7 +33,9 @@ void SpatialBLEServer::setup() {
 
   auto ips = network::get_ip_addresses();
   if (!ips.empty()) {
-    ota_ip_ = ips[0].str();
+    char buf[network::IP_ADDRESS_BUFFER_SIZE];
+    ips[0].str_to(buf);
+    ota_ip_ = buf;
   }
   if (ota_ip_ == "0.0.0.0" || ota_ip_.empty()) {
     ota_ip_ = "";
@@ -125,22 +127,26 @@ void SpatialBLEServer::publish_device_(const esp32_ble_tracker::ESPBTDevice &dev
   if (!device.get_manufacturer_datas().empty()) {
     JsonObject mfr = dev["manufacturer_data"].to<JsonObject>();
     for (const auto &md : device.get_manufacturer_datas()) {
-      mfr[md.uuid.to_str()] = bytes_to_hex(md.data);
+      char uuid_buf[37];
+      mfr[md.uuid.to_str(uuid_buf)] = bytes_to_hex(md.data);
     }
   }
 
   // Service UUIDs
   if (!device.get_service_uuids().empty()) {
     JsonArray svc = dev["service_uuids"].to<JsonArray>();
-    for (const auto &uuid : device.get_service_uuids())
-      svc.add(uuid.to_str());
+    for (const auto &uuid : device.get_service_uuids()) {
+      char uuid_buf[37];
+      svc.add(uuid.to_str(uuid_buf));
+    }
   }
 
   // Service data
   if (!device.get_service_datas().empty()) {
     JsonObject svc_data = dev["service_data"].to<JsonObject>();
     for (const auto &sd : device.get_service_datas()) {
-      svc_data[sd.uuid.to_str()] = bytes_to_hex(sd.data);
+      char uuid_buf[37];
+      svc_data[sd.uuid.to_str(uuid_buf)] = bytes_to_hex(sd.data);
     }
   }
 
