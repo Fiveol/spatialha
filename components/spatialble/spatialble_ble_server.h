@@ -1,5 +1,9 @@
 #pragma once
 
+#include <map>
+#include <string>
+#include <vector>
+
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"

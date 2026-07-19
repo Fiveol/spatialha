@@ -17,11 +17,25 @@ static const float DEBOUNCE_RSSI_DELTA = 5.0f;
 static const float DEBOUNCE_TIME_SEC = 30.0f;
 static const uint16_t ESPHOME_OTA_PORT = 8266;
 
+static std::string bytes_to_hex(const std::vector<uint8_t> &data) {
+  std::string out;
+  out.reserve(data.size() * 2);
+  for (uint8_t b : data) {
+    char nibble[4];
+    snprintf(nibble, sizeof(nibble), "%02x", b);
+    out += nibble;
+  }
+  return out;
+}
+
 void SpatialBLEServer::setup() {
   server_id_ = App.get_name();
 
-  ota_ip_ = network::get_ip_address().str();
-  if (ota_ip_ == "0.0.0.0") {
+  auto ips = network::get_ip_addresses();
+  if (!ips.empty()) {
+    ota_ip_ = ips[0].str();
+  }
+  if (ota_ip_ == "0.0.0.0" || ota_ip_.empty()) {
     ota_ip_ = "";
   }
 
@@ -65,7 +79,7 @@ void SpatialBLEServer::publish_heartbeat_() {
 
   std::string topic = topic_ + "/" + server_id_;
 
-  DynamicJsonDocument doc(512);
+  JsonDocument doc;
   doc["type"] = "heartbeat";
   doc["server_id"] = server_id_;
   doc["timestamp"] = millis() / 1000.0;
@@ -87,12 +101,12 @@ void SpatialBLEServer::publish_device_(const esp32_ble_tracker::ESPBTDevice &dev
 
   std::string topic = topic_ + "/" + server_id_;
 
-  DynamicJsonDocument doc(3072);
+  JsonDocument doc;
   doc["type"] = "advertisement";
   doc["server_id"] = server_id_;
   doc["timestamp"] = timestamp;
 
-  JsonObject dev = doc.createNestedObject("device");
+  JsonObject dev = doc["device"].to<JsonObject>();
   dev["address"] = device.address_str();
 
   std::string name = device.get_name();
@@ -101,41 +115,32 @@ void SpatialBLEServer::publish_device_(const esp32_ble_tracker::ESPBTDevice &dev
 
   dev["rssi"] = device.get_rssi();
 
-  auto tx_power = device.get_tx_power();
-  if (tx_power.has_value())
-    dev["tx_power"] = *tx_power;
+  // TX Power — get_tx_powers() returns a vector
+  auto tx_powers = device.get_tx_powers();
+  if (!tx_powers.empty()) {
+    dev["tx_power"] = tx_powers[0];
+  }
 
+  // Manufacturer data
   if (!device.get_manufacturer_datas().empty()) {
-    JsonObject mfr = dev.createNestedObject("manufacturer_data");
+    JsonObject mfr = dev["manufacturer_data"].to<JsonObject>();
     for (const auto &md : device.get_manufacturer_datas()) {
-      char buf[16];
-      snprintf(buf, sizeof(buf), "%04x", md.uuid);
-      std::string hex;
-      for (uint8_t b : md.data) {
-        char nibble[4];
-        snprintf(nibble, sizeof(nibble), "%02x", b);
-        hex += nibble;
-      }
-      mfr[buf] = hex;
+      mfr[md.uuid.to_str()] = bytes_to_hex(md.data);
     }
   }
 
+  // Service UUIDs
   if (!device.get_service_uuids().empty()) {
-    JsonArray svc = dev.createNestedArray("service_uuids");
+    JsonArray svc = dev["service_uuids"].to<JsonArray>();
     for (const auto &uuid : device.get_service_uuids())
-      svc.add(uuid.to_string());
+      svc.add(uuid.to_str());
   }
 
+  // Service data
   if (!device.get_service_datas().empty()) {
-    JsonObject svc_data = dev.createNestedObject("service_data");
+    JsonObject svc_data = dev["service_data"].to<JsonObject>();
     for (const auto &sd : device.get_service_datas()) {
-      std::string hex;
-      for (uint8_t b : sd.data) {
-        char nibble[4];
-        snprintf(nibble, sizeof(nibble), "%02x", b);
-        hex += nibble;
-      }
-      svc_data[sd.uuid.to_string()] = hex;
+      svc_data[sd.uuid.to_str()] = bytes_to_hex(sd.data);
     }
   }
 
