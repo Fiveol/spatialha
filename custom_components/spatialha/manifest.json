@@ -1,0 +1,11 @@
+{
+  "domain": "spatialha",
+  "name": "SpatialHA",
+  "version": "1.0.0",
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
+  "codeowners": [],
+  "requirements": [],
+  "iot_class": "local_push",
+  "integration_type": "hub"
+}
