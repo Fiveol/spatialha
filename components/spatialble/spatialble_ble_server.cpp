@@ -4,10 +4,6 @@
 #include "esphome/components/mqtt/mqtt_client.h"
 #include "esphome/components/network/util.h"
 
-#ifdef USE_ESP32_BLE_TRACKER
-#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
-#endif
-
 #ifdef USE_ARDUINOJSON
 #include <ArduinoJson.h>
 #endif
@@ -24,7 +20,6 @@ static const uint16_t ESPHOME_OTA_PORT = 8266;
 void SpatialBLEServer::setup() {
   server_id_ = App.get_name();
 
-  // Resolve OTA IP via network interface
   ota_ip_ = network::get_ip_address().str();
   if (ota_ip_ == "0.0.0.0") {
     ota_ip_ = "";
@@ -106,18 +101,15 @@ void SpatialBLEServer::publish_device_(const esp32_ble_tracker::ESPBTDevice &dev
 
   dev["rssi"] = device.get_rssi();
 
-  // TX Power
   auto tx_power = device.get_tx_power();
   if (tx_power.has_value())
     dev["tx_power"] = *tx_power;
 
-  // Manufacturer data
   if (!device.get_manufacturer_datas().empty()) {
     JsonObject mfr = dev.createNestedObject("manufacturer_data");
     for (const auto &md : device.get_manufacturer_datas()) {
       char buf[16];
       snprintf(buf, sizeof(buf), "%04x", md.uuid);
-
       std::string hex;
       for (uint8_t b : md.data) {
         char nibble[4];
@@ -128,14 +120,12 @@ void SpatialBLEServer::publish_device_(const esp32_ble_tracker::ESPBTDevice &dev
     }
   }
 
-  // Service UUIDs
   if (!device.get_service_uuids().empty()) {
     JsonArray svc = dev.createNestedArray("service_uuids");
     for (const auto &uuid : device.get_service_uuids())
       svc.add(uuid.to_string());
   }
 
-  // Service data
   if (!device.get_service_datas().empty()) {
     JsonObject svc_data = dev.createNestedObject("service_data");
     for (const auto &sd : device.get_service_datas()) {

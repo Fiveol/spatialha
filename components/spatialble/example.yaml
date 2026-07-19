@@ -1,11 +1,16 @@
-# Example ESPHome YAML showing how to use the spatialble component.
+# Example ESPHome config using the spatialble component.
 #
-# Place this entire spatialble/esp32 directory in your ESPHome config under
-#   esphome:
-#     external_components:
-#       - source: path/to/spatialble/esp32
-#
-# Or copy spatialble_ble_server.h and .cpp into your own project.
+# USAGE — pick one source option:
+
+# Option A — from local path
+# external_components:
+#   - source: /path/to/your/repo/components
+#     components: [spatialble]
+
+# Option B — from GitHub (create a repo with 'components/' at root)
+# external_components:
+#   - source: github://YourUser/your-repo
+#     components: [spatialble]
 
 substitutions:
   name: spatialble-esp32-1
@@ -27,18 +32,15 @@ mqtt:
   username: !secret mqtt_username
   password: !secret mqtt_password
 
-# Enable built-in OTA for firmware updates
 ota:
   - platform: esphome
     password: !secret ota_password
 
-# Enable BLE tracking stack (required by spatialble)
 esp32_ble_tracker:
   scan_parameters:
     active: false
     continuous: true
 
-# The spatialble component — publishes BLE advertisements to MQTT
 spatialble:
   topic: spatialble
   heartbeat_interval: 10s

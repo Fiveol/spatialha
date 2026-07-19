@@ -1,4 +1,4 @@
-"""ESPHome component registration for SpatialBLE BLE -> MQTT bridge."""
+"""ESPHome component for SpatialBLE — BLE advertisement to MQTT bridge."""
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
