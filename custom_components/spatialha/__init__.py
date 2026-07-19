@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from homeassistant.components import panel_custom
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
@@ -17,8 +18,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     path = Path(__file__).parent / "frontend"
 
-    hass.http.register_static_path(
-        "/api/spatialha/static", str(path), cache_headers=False
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                "/api/spatialha/static",
+                str(path),
+                cache_headers=False,
+            )
+        ]
     )
 
     await panel_custom.async_register_panel(
