@@ -4,9 +4,7 @@
 #include "esphome/components/mqtt/mqtt_client.h"
 #include "esphome/components/network/util.h"
 
-#ifdef USE_ARDUINOJSON
 #include <ArduinoJson.h>
-#endif
 
 namespace esphome {
 namespace spatialble {

@@ -45,6 +45,18 @@ GRAPH_COLORS = [
 ]
 
 
+def _mfr_raw(manufacturer_data, hex_key):
+    """Look up manufacturer data by hex key or its decimal equivalent."""
+    raw = manufacturer_data.get(hex_key)
+    if not raw:
+        raw = manufacturer_data.get(str(int(hex_key, 16)))
+    if not raw:
+        for k, v in manufacturer_data.items():
+            if isinstance(k, int) and k == int(hex_key, 16):
+                raw = v
+                break
+    return raw
+
 def decode_ibeacon(manufacturer_data: dict) -> Optional[dict]:
     """Decode Apple iBeacon from manufacturer data.
 
@@ -56,7 +68,7 @@ def decode_ibeacon(manufacturer_data: dict) -> Optional[dict]:
       Bytes 20-21: Minor (2 bytes, big-endian)
       Byte 22: TX Power (signed, dBm at 1m)
     """
-    raw = manufacturer_data.get(APPLE_CO_ID)
+    raw = _mfr_raw(manufacturer_data, APPLE_CO_ID)
     if not raw:
         return None
     data = bytes.fromhex(raw)
@@ -93,6 +105,13 @@ def decode_eddystone(service_data: dict) -> Optional[dict]:
       TLM:  0x20 + battery(2B) + temp(2B) + pkt cnt(4B) + uptime(4B)
     """
     raw = service_data.get(EDDYSTONE_SVC_UUID)
+    if not raw:
+        raw = service_data.get(str(int(EDDYSTONE_SVC_UUID, 16)))
+    if not raw:
+        for k, v in service_data.items():
+            if isinstance(k, int) and k == int(EDDYSTONE_SVC_UUID, 16):
+                raw = v
+                break
     if not raw:
         return None
     data = bytes.fromhex(raw)

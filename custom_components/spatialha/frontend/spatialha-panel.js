@@ -11,8 +11,25 @@ class SpatialHAPanel extends HTMLElement {
 
   async _fetchVersion() {
     if (!this._hass) return;
-    const result = await this._hass.callWS({ type: "spatialha/version" });
-    this.innerHTML = `<div id="content">This is the SpatialHA panel - Version ${result.version}</div>`;
+    try {
+      const result = await this._hass.callWS({ type: "spatialha/version" });
+      this.innerHTML = `
+        <ha-card>
+          <div class="card-header">
+            SpatialHA
+          </div>
+          <div class="card-content">
+            <p><b>Status:</b> Connected</p>
+            <p><b>Version:</b> ${result.version}</p>
+          </div>
+        </ha-card>`;
+    } catch {
+      this.innerHTML = `<ha-card><div class="card-content">Connection error</div></ha-card>`;
+    }
+  }
+
+  getCardSize() {
+    return 1;
   }
 }
 

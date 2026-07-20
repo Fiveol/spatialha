@@ -11,6 +11,10 @@ import logging
 from bleak import BleakScanner
 import paho.mqtt.client as mqtt
 
+_has_callback_api = hasattr(mqtt, 'CallbackAPIVersion')
+if _has_callback_api:
+    from paho.mqtt.client import CallbackAPIVersion
+
 from spatialble_config import (
     MQTT_BROKER,
     MQTT_PORT,
@@ -37,10 +41,10 @@ _LOGGER = logging.getLogger(__name__)
 class SpatialBLEServer:
     def __init__(self):
         self.server_id = socket.gethostname()
-        self.mqtt_client = mqtt.Client(
-            client_id=self.server_id,
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
-        )
+        kwargs = dict(client_id=self.server_id)
+        if _has_callback_api:
+            kwargs['callback_api_version'] = CallbackAPIVersion.VERSION1
+        self.mqtt_client = mqtt.Client(**kwargs)
         if MQTT_USERNAME and MQTT_PASSWORD:
             self.mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
         self.mqtt_client.on_connect = self._on_connect
