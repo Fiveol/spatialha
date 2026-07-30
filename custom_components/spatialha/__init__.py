@@ -32,8 +32,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         frontend_url_path="spatialha",
         webcomponent_name="spatialha-panel",
-        sidepanel_icon="mdi:map",
-        sidepanel_title="SpatialHA",
+        sidebar_icon="mdi:map",
+        sidebar_title="SpatialHA",
         module_url="/api/spatialha/static/spatialha-panel.js",
         require_admin=False,
         config={},
@@ -47,5 +47,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.components.frontend.async_remove_panel("spatialha")
+    hass.components.frontend.async_remove_panel(hass, "spatialha")
     return True
