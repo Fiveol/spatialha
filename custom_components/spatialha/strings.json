@@ -8,7 +8,8 @@
           "mqtt_host": "MQTT Broker Hostname",
           "mqtt_port": "MQTT Broker Port",
           "mqtt_username": "MQTT Username",
-          "mqtt_password": "MQTT Password"
+          "mqtt_password": "MQTT Password",
+          "update_interval": "Live update interval (seconds)"
         }
       }
     },
@@ -20,12 +21,13 @@
     "step": {
       "init": {
         "title": "SpatialHA Options",
-        "description": "Configure MQTT broker for SpatialBLE devices.",
+        "description": "Configure MQTT broker and live update interval.",
         "data": {
           "mqtt_host": "MQTT Broker Hostname",
           "mqtt_port": "MQTT Broker Port",
           "mqtt_username": "MQTT Username",
-          "mqtt_password": "MQTT Password"
+          "mqtt_password": "MQTT Password",
+          "update_interval": "Live update interval (seconds)"
         }
       }
     }

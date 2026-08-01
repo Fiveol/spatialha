@@ -17,6 +17,7 @@ from .const import (
     DEFAULT_MQTT_PORT,
     DOMAIN,
 )
+from .floorplan import FloorPlanStore
 from .mqtt import MQTTClient
 from .websocket_api import async_register_websocket_commands
 
@@ -30,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     path = Path(__file__).parent / "frontend"
 
-    await hass.http.async_register_static_paths(
+    static_path_removers = await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
                 "/api/spatialha/static",
@@ -39,6 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         ]
     )
+    hass.data[DOMAIN]["static_path_removers"] = static_path_removers
 
     async_remove_panel(hass, "spatialha")
 
@@ -65,14 +67,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN]["mqtt_client"] = mqtt_client
     await mqtt_client.async_start()
 
+    hass.data[DOMAIN]["floorplan_store"] = FloorPlanStore(hass)
+
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    mqtt_client = hass.data.get(DOMAIN, {}).get("mqtt_client")
+    data = hass.data.get(DOMAIN, {})
+    mqtt_client = data.get("mqtt_client")
     if mqtt_client:
         await mqtt_client.async_stop()
+
+    for remover in data.get("static_path_removers", []):
+        remover()
+
     async_remove_panel(hass, "spatialha")
-    return True
+
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
+
+    hass.data.pop(DOMAIN, None)
+
+    return unload_ok

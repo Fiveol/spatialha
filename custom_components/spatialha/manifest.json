@@ -4,8 +4,10 @@
   "version": "1.0.0",
   "config_flow": true,
   "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
-  "codeowners": [],
+  "codeowners": ["@Fiveol"],
   "requirements": ["paho-mqtt>=2.0.0"],
+  "documentation": "https://github.com/Fiveol/spatialha",
+  "issue_tracker": "https://github.com/Fiveol/spatialha/issues",
   "iot_class": "local_push",
   "integration_type": "hub"
 }

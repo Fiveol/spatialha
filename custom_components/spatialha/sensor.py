@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+from homeassistant.helpers.device_registry import (
+    DeviceRegistry,
+    async_get as async_get_device_registry,
+)
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, VERSION
@@ -19,8 +26,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     data = hass.data.setdefault(DOMAIN, {})
-    dr = await async_get_device_registry(hass)
+    dr = async_get_device_registry(hass)
     entities: list[SensorEntity] = []
+
+    _ensure_bridge_device(dr, config_entry.entry_id)
 
     for server_id in data.get("servers", {}):
         _LOGGER.debug("Creating scanner device for %s", server_id)
@@ -36,15 +45,36 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities)
 
-    data["add_scanner_sensor"] = callback(lambda sid: async_add_entities([SpatialHAScannerSensor(hass, sid)]))
-    data["ensure_scanner_device"] = callback(lambda sid: _ensure_scanner_device(dr, config_entry.entry_id, sid))
-    data["ensure_ble_device"] = callback(lambda addr, dev: _ensure_ble_device(dr, config_entry.entry_id, addr, dev))
-    data["mqtt_connected"] = False
+    data["add_scanner_sensor"] = callback(
+        lambda sid: async_add_entities([SpatialHAScannerSensor(hass, sid)])
+    )
+    data["ensure_scanner_device"] = callback(
+        lambda sid: _ensure_scanner_device(dr, config_entry.entry_id, sid)
+    )
+    data["ensure_ble_device"] = callback(
+        lambda addr, dev: _ensure_ble_device(dr, config_entry.entry_id, addr, dev)
+    )
+    data.setdefault("mqtt_connected", False)
 
-    _LOGGER.info("Sensor platform setup complete: %d scanners, %d BLE devices", len(data.get("servers", {})), len(data.get("devices", {})))
+    _LOGGER.info(
+        "Sensor platform setup complete: %d scanners, %d BLE devices",
+        len(data.get("servers", {})),
+        len(data.get("devices", {})),
+    )
 
 
-def _ensure_scanner_device(dr, config_entry_id: str, server_id: str) -> None:
+def _ensure_bridge_device(dr: DeviceRegistry, config_entry_id: str) -> None:
+    dr.async_get_or_create(
+        config_entry_id=config_entry_id,
+        identifiers={(DOMAIN, "bridge")},
+        name="SpatialHA",
+        manufacturer="SpatialHA",
+        model="SpatialHA Hub",
+        sw_version=VERSION,
+    )
+
+
+def _ensure_scanner_device(dr: DeviceRegistry, config_entry_id: str, server_id: str) -> None:
     dr.async_get_or_create(
         config_entry_id=config_entry_id,
         identifiers={(DOMAIN, f"scanner_{server_id}")},
@@ -55,7 +85,7 @@ def _ensure_scanner_device(dr, config_entry_id: str, server_id: str) -> None:
     )
 
 
-def _ensure_ble_device(dr, config_entry_id: str, address: str, dev: dict) -> None:
+def _ensure_ble_device(dr: DeviceRegistry, config_entry_id: str, address: str, dev: dict) -> None:
     dr.async_get_or_create(
         config_entry_id=config_entry_id,
         identifiers={(DOMAIN, f"ble_{address}")},
@@ -66,9 +96,14 @@ def _ensure_ble_device(dr, config_entry_id: str, address: str, dev: dict) -> Non
 
 
 class SpatialHAMQTTStatusSensor(SensorEntity):
+    """Diagnostic sensor reporting the MQTT broker connection state."""
+
+    _attr_has_entity_name = True
+    _attr_name = "MQTT Status"
     _attr_icon = "mdi:router-wireless"
     _attr_unique_id = f"{DOMAIN}_mqtt_status"
-    _attr_name = "SpatialHA MQTT Status"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_info = {"identifiers": {(DOMAIN, "bridge")}}
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -80,19 +115,23 @@ class SpatialHAMQTTStatusSensor(SensorEntity):
         if not mqtt_client:
             return "Not configured"
         if data.get("mqtt_connected"):
-            host = mqtt_client.host
-            return f"Connected to {host}"
+            return f"Connected to {mqtt_client.host}"
         return "Disconnected"
 
 
 class SpatialHAScannerSensor(SensorEntity):
+    """Count of BLE devices recently seen by a specific scanner."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Devices Seen"
     _attr_icon = "mdi:bluetooth"
+    _attr_device_class = SensorDeviceClass.COUNT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, server_id: str) -> None:
         self.hass = hass
         self.server_id = server_id
         self._attr_unique_id = f"{DOMAIN}_scanner_{server_id}"
-        self._attr_name = f"SpatialBLE Scanner {server_id}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"scanner_{server_id}")},
         }
@@ -101,11 +140,20 @@ class SpatialHAScannerSensor(SensorEntity):
     def native_value(self) -> int:
         data = self.hass.data.get(DOMAIN, {})
         devices = data.get("devices", {})
-        return sum(1 for d in devices.values() if d.get("server_id") == self.server_id)
+        return sum(
+            1
+            for d in devices.values()
+            if d.get("server_id") == self.server_id
+            or self.server_id in (d.get("seen_by") or {})
+        )
 
     @property
     def extra_state_attributes(self) -> dict:
         data = self.hass.data.get(DOMAIN, {})
         servers = data.get("servers", {})
         info = servers.get(self.server_id, {})
-        return {"ota_ip": info.get("ota_ip", ""), "ota_port": info.get("ota_port", 0), "last_seen": info.get("last_seen", 0)}
+        return {
+            "ota_ip": info.get("ota_ip", ""),
+            "ota_port": info.get("ota_port", 0),
+            "last_seen": info.get("last_seen", 0),
+        }

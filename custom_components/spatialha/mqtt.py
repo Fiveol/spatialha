@@ -12,9 +12,19 @@ from .const import DOMAIN, MQTT_TOPIC
 
 _LOGGER = logging.getLogger(__name__)
 
+# Bound the in-memory device cache; entries not seen in this window are pruned
+# when the cache grows too large.
+MAX_DEVICES = 500
+DEVICE_TTL_SECONDS = 24 * 60 * 60
+CONNECT_TIMEOUT = 10
+
 
 class MQTTClient:
-    def __init__(self, hass: HomeAssistant, host: str, port: int, username: str, password: str) -> None:
+    """MQTT bridge to SpatialBLE scanners, resilient to broker outages."""
+
+    def __init__(
+        self, hass: HomeAssistant, host: str, port: int, username: str, password: str
+    ) -> None:
         self.hass = hass
         self.host = host
         self.port = port
@@ -27,51 +37,101 @@ class MQTTClient:
         if not self.host:
             _LOGGER.warning("MQTT not configured - no host set")
             return
+        if self._running:
+            _LOGGER.debug("MQTT client already running")
+            return
         self._running = True
+        data = self.hass.data.setdefault(DOMAIN, {})
+        data["mqtt_connected"] = False
 
-        def on_connect(client, userdata, flags, rc) -> None:
-            if rc == 0:
-                _LOGGER.info("Connected to MQTT broker at %s:%s", self.host, self.port)
-                self.hass.data[DOMAIN]["mqtt_connected"] = True
+        def on_connect(client, userdata, flags, reason_code, properties) -> None:
+            data = self.hass.data.get(DOMAIN, {})
+            if not data:
+                return
+            if reason_code.is_failure:
+                _LOGGER.error("MQTT connection failed: %s", reason_code)
+                data["mqtt_connected"] = False
+            else:
+                _LOGGER.info(
+                    "Connected to MQTT broker at %s:%s", self.host, self.port
+                )
+                data["mqtt_connected"] = True
                 client.subscribe(MQTT_TOPIC)
                 _LOGGER.info("Subscribed to %s", MQTT_TOPIC)
-            else:
-                _LOGGER.error("MQTT connection failed with rc=%s", rc)
 
-        def on_disconnect(client, userdata, rc) -> None:
-            self.hass.data[DOMAIN]["mqtt_connected"] = False
-            if rc != 0:
-                _LOGGER.warning("MQTT disconnected (rc=%s), will auto-reconnect", rc)
+        def on_disconnect(client, userdata, disconnect_flags, reason_code, properties) -> None:
+            data = self.hass.data.get(DOMAIN, {})
+            if data:
+                data["mqtt_connected"] = False
+            if not reason_code.is_failure:
+                return
+            _LOGGER.warning(
+                "MQTT disconnected (%s), will auto-reconnect", reason_code
+            )
+
+        def on_subscribe(client, userdata, mid, reason_codes, properties) -> None:
+            _LOGGER.debug("MQTT subscription confirmed: %s", reason_codes)
 
         def on_message(client, userdata, msg) -> None:
-            self.hass.loop.call_soon_threadsafe(self._handle_message, msg.topic, msg.payload)
+            try:
+                self.hass.loop.call_soon_threadsafe(
+                    self._handle_message, msg.topic, msg.payload
+                )
+            except RuntimeError:
+                _LOGGER.debug("Event loop closed, dropping MQTT message on %s", msg.topic)
 
-        self.client = mqtt.Client(client_id=f"spatialha-{id(self)}")
+        self.client = mqtt.Client(
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            client_id=f"spatialha-{id(self)}",
+        )
         if self.username and self.password:
             self.client.username_pw_set(self.username, self.password)
         self.client.on_connect = on_connect
         self.client.on_disconnect = on_disconnect
+        self.client.on_subscribe = on_subscribe
         self.client.on_message = on_message
+        self.client.reconnect_delay_set(min_delay=1, max_delay=30)
+        self.client.connect_timeout = CONNECT_TIMEOUT
 
         try:
-            _LOGGER.info("Connecting to MQTT broker at %s:%s ...", self.host, self.port)
-            self.client.connect(self.host, self.port, keepalive=60)
-            self.client.loop_start()
-        except Exception as e:
-            _LOGGER.error("Failed to connect to MQTT broker: %s", e)
+            # Non-blocking: the network loop thread (loop_start) performs the
+            # connect and reconnects automatically with reconnect_delay_set.
+            self.client.connect_async(self.host, self.port, keepalive=60)
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.error("Failed to initiate MQTT connection: %s", e)
+            self._running = False
+            return
+        self.client.loop_start()
+        _LOGGER.info(
+            "MQTT client started (broker %s:%s), reconnect is automatic",
+            self.host,
+            self.port,
+        )
 
     async def async_stop(self) -> None:
         self._running = False
-        if self.client:
-            self.client.loop_stop()
-            self.client.disconnect()
-            self.client = None
+        if not self.client:
+            return
+        client = self.client
+        self.client = None
+        try:
+            # disconnect()/loop_stop() may block briefly (e.g. mid-reconnect),
+            # so keep them off the event loop.
+            await self.hass.async_add_executor_job(client.disconnect)
+            await self.hass.async_add_executor_job(client.loop_stop)
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.debug("Error while stopping MQTT client: %s", e)
+        data = self.hass.data.get(DOMAIN, {})
+        if data:
+            data["mqtt_connected"] = False
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
-        data = self.hass.data.setdefault(DOMAIN, {})
+        data = self.hass.data.get(DOMAIN, {})
+        if not data:
+            return
         try:
             parsed = json.loads(payload)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             _LOGGER.warning("Invalid JSON on %s: %s", topic, payload[:200])
             return
 
@@ -101,11 +161,18 @@ class MQTTClient:
 
         elif msg_type == "advertisement":
             device = parsed.get("device", {})
+            if not isinstance(device, dict):
+                return
             addr = device.get("address")
             if not addr:
                 return
             devices = data.setdefault("devices", {})
+            server_id = parsed.get("server_id")
             is_new = addr not in devices
+            existing = devices.get(addr, {})
+            seen_by = dict(existing.get("seen_by", {}))
+            if server_id:
+                seen_by[server_id] = device.get("rssi")
             devices[addr] = {
                 "address": addr,
                 "name": device.get("name", ""),
@@ -114,11 +181,28 @@ class MQTTClient:
                 "manufacturer_data": device.get("manufacturer_data", {}),
                 "service_uuids": device.get("service_uuids", []),
                 "service_data": device.get("service_data", {}),
-                "server_id": parsed.get("server_id"),
+                "server_id": server_id,
+                "seen_by": seen_by,
                 "last_seen": parsed.get("timestamp", time.time()),
             }
+            self._prune_devices(devices)
             if is_new:
-                _LOGGER.info("New BLE device discovered: %s (%s) via %s", device.get("name", ""), addr, parsed.get("server_id"))
+                _LOGGER.info(
+                    "New BLE device discovered: %s (%s) via %s",
+                    device.get("name", ""),
+                    addr,
+                    server_id,
+                )
                 ensure = data.get("ensure_ble_device")
                 if ensure:
                     ensure(addr, devices[addr])
+
+    def _prune_devices(self, devices: dict) -> None:
+        if len(devices) <= MAX_DEVICES:
+            return
+        cutoff = time.time() - DEVICE_TTL_SECONDS
+        stale = [addr for addr, dev in devices.items() if dev.get("last_seen", 0) < cutoff]
+        for addr in stale:
+            del devices[addr]
+        if stale:
+            _LOGGER.info("Pruned %d stale BLE devices from cache", len(stale))
