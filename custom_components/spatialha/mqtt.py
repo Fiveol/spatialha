@@ -129,6 +129,11 @@ class MQTTClient:
         data = self.hass.data.get(DOMAIN, {})
         if not data:
             return
+        for forward in list(data.get("mqtt_monitor_subs", {}).values()):
+            try:
+                forward(topic, payload)
+            except Exception:  # noqa: BLE001
+                _LOGGER.debug("Error forwarding MQTT message to monitor", exc_info=True)
         try:
             parsed = json.loads(payload)
         except (json.JSONDecodeError, TypeError):

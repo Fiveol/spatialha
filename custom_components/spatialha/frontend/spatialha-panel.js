@@ -331,7 +331,6 @@ class FloorPlanEditor {
     this.devices = [];
     this.lastDeviceUpdate = null;
     this.saveTimer = null;
-    this._init();
   }
 
   async init() {
@@ -1189,6 +1188,8 @@ class SpatialHAPanel extends HTMLElement {
     this._editorInit = false;
     this._pollTimer = null;
     this._pollInterval = 5;
+    this._monitorUnsub = null;
+    this._monitorLog = [];
     this._uiState = this._loadUIState();
   }
 
@@ -1212,6 +1213,33 @@ class SpatialHAPanel extends HTMLElement {
 
   disconnectedCallback() {
     if (this._pollTimer) clearInterval(this._pollTimer);
+    if (this._monitorUnsub) {
+      this._monitorUnsub();
+      this._monitorUnsub = null;
+    }
+  }
+
+  async _toggleMonitor() {
+    if (!this._hass) return;
+    if (this._monitorUnsub) {
+      this._monitorUnsub();
+      this._monitorUnsub = null;
+      this._updateTab("ble");
+      return;
+    }
+    this._monitorLog = [];
+    try {
+      this._monitorUnsub = await this._hass.connection.subscribeMessage((evt) => {
+        const e = evt.event || {};
+        this._monitorLog.push(`[${new Date((e.time || 0) * 1000).toLocaleTimeString()}] ${e.topic}  ${e.payload}`);
+        if (this._monitorLog.length > 200) this._monitorLog.shift();
+        const box = this.shadowRoot.getElementById("mqttMonitorBox");
+        if (box) box.textContent = this._monitorLog.join("\n");
+      }, { type: "spatialha/mqtt/monitor", subscribe: true });
+    } catch {
+      this._monitorUnsub = null;
+    }
+    this._updateTab("ble");
   }
 
   set hass(hass) {
@@ -1332,10 +1360,17 @@ class SpatialHAPanel extends HTMLElement {
     if (!this._hass) return;
     this._saveStatus = "Saving...";
     this._updateTab("settings");
+    const payload = {
+      mqtt_host: this._editConfig.mqtt_host,
+      mqtt_port: this._editConfig.mqtt_port,
+      mqtt_username: this._editConfig.mqtt_username,
+      update_interval: this._editConfig.update_interval,
+    };
+    if (this._editConfig.mqtt_password) payload.mqtt_password = this._editConfig.mqtt_password;
     try {
-      await this._hass.callWS({ type: "spatialha/update_config", ...this._editConfig });
+      await this._hass.callWS({ type: "spatialha/update_config", ...payload });
       this._config = { ...this._editConfig };
-      this._saveStatus = "Saved! Reload integration to apply.";
+      this._saveStatus = "Saved";
       this._setStatusChip();
       this._applyPollInterval();
     } catch {
@@ -1480,7 +1515,7 @@ class SpatialHAPanel extends HTMLElement {
             </select>
           </div>
           ${devices.length === 0 ?
-            (this._devices.length === 0 ? '<div class="empty">No BLE devices detected yet. Devices seen by SpatialBLE scanners will appear here.</div>' : '<div class="empty">No devices match your search.</div>')
+            (this._devices.length === 0 ? '<div class="empty">No BLE devices detected yet. Use the MQTT Monitor below to verify messages are arriving from your SpatialBLE scanners.</div>' : '<div class="empty">No devices match your search.</div>')
             : devices.map(d => `
               <div class="device-row ${this._bleExpanded.has(d.address) ? "expanded" : ""}" data-addr="${esc(d.address)}">
                 <div class="device-info">
@@ -1519,6 +1554,16 @@ class SpatialHAPanel extends HTMLElement {
           this._updateTab("ble");
         };
       });
+      el.innerHTML += `
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <h2 style="flex:1;margin:0">MQTT Monitor</h2>
+            <button class="btn ${this._monitorUnsub ? "" : "btn-secondary"}" id="mqttMonitorToggle">${this._monitorUnsub ? "Stop" : "Start"}</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-secondary)">Live view of every message published on the <code>spatialble/#</code> topic. Useful for verifying that scanners are actually transmitting.</p>
+          <div id="mqttMonitorBox" style="font-family:monospace;font-size:11px;background:var(--sidebar-bg);border:1px solid var(--divider);border-radius:8px;padding:10px;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">${this._monitorLog.length ? esc(this._monitorLog.join("\n")) : "Monitor is off. Click Start to begin capturing messages."}</div>
+        </div>`;
+      el.querySelector("#mqttMonitorToggle").onclick = () => this._toggleMonitor();
     } else if (tab === "about") {
       el.innerHTML = `
         <div class="card">

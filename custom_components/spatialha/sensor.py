@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-)
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import (
@@ -125,7 +122,7 @@ class SpatialHAScannerSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_name = "Devices Seen"
     _attr_icon = "mdi:bluetooth"
-    _attr_device_class = SensorDeviceClass.COUNT
+    _attr_native_unit_of_measurement = "devices"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, hass: HomeAssistant, server_id: str) -> None:

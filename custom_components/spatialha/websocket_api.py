@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import time
+from typing import Callable
 
 import voluptuous as vol
 
@@ -112,6 +114,43 @@ async def handle_update_config(
     connection.send_result(msg["id"], {"success": True})
 
 
+@websocket_api.websocket_command(
+    {"type": "spatialha/mqtt/monitor", vol.Required("subscribe"): bool}
+)
+@websocket_api.async_response
+async def handle_mqtt_monitor(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
+) -> None:
+    """Subscribe/unsubscribe a connection to raw messages on the MQTT topic."""
+    data = hass.data.setdefault(DOMAIN, {})
+    subs: dict[int, Callable[[str, bytes], None]] = data.setdefault(
+        "mqtt_monitor_subs", {}
+    )
+
+    if not msg["subscribe"]:
+        subs.pop(connection.id, None)
+        connection.subscriptions.pop(msg["id"], None)
+        connection.send_result(msg["id"])
+        return
+
+    def forward(topic: str, payload: bytes) -> None:
+        text = (
+            payload.decode("utf-8", "replace")
+            if isinstance(payload, (bytes, bytearray))
+            else str(payload)
+        )
+        connection.send_event(
+            msg["id"], {"topic": topic, "payload": text, "time": time.time()}
+        )
+
+    def unsubscribe() -> None:
+        subs.pop(connection.id, None)
+
+    subs[connection.id] = forward
+    connection.subscriptions[msg["id"]] = unsubscribe
+    connection.send_result(msg["id"])
+
+
 @websocket_api.websocket_command({"type": "spatialha/floorplan/get"})
 @websocket_api.async_response
 async def handle_floorplan_get(
@@ -171,3 +210,4 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, handle_update_config)
     websocket_api.async_register_command(hass, handle_floorplan_get)
     websocket_api.async_register_command(hass, handle_floorplan_save)
+    websocket_api.async_register_command(hass, handle_mqtt_monitor)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from homeassistant.components import panel_custom
-from homeassistant.components.frontend import async_remove_panel
+from homeassistant.components.frontend import DATA_PANELS, async_remove_panel
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -26,6 +26,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+async def _remove_panel_if_exists(hass: HomeAssistant) -> None:
+    """Remove a stale panel registration without logging unknown-panel noise."""
+    if "spatialha" in hass.data.get(DATA_PANELS, {}):
+        async_remove_panel(hass, "spatialha")
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
@@ -42,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data[DOMAIN]["static_path_removers"] = static_path_removers
 
-    async_remove_panel(hass, "spatialha")
+    await _remove_panel_if_exists(hass)
 
     await panel_custom.async_register_panel(
         hass,
@@ -83,7 +89,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for remover in data.get("static_path_removers", []):
         remover()
 
-    async_remove_panel(hass, "spatialha")
+    await _remove_panel_if_exists(hass)
 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
 
