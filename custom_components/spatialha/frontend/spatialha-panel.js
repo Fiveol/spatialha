@@ -1190,6 +1190,7 @@ class SpatialHAPanel extends HTMLElement {
     this._pollInterval = 5;
     this._monitorUnsub = null;
     this._monitorLog = [];
+    this._monitorError = "";
     this._uiState = this._loadUIState();
   }
 
@@ -1220,7 +1221,7 @@ class SpatialHAPanel extends HTMLElement {
   }
 
   async _toggleMonitor() {
-    if (!this._hass) return;
+    if (!this._hass || !this._hass.connection) return;
     if (this._monitorUnsub) {
       this._monitorUnsub();
       this._monitorUnsub = null;
@@ -1228,6 +1229,7 @@ class SpatialHAPanel extends HTMLElement {
       return;
     }
     this._monitorLog = [];
+    this._monitorError = "";
     try {
       this._monitorUnsub = await this._hass.connection.subscribeMessage((evt) => {
         const e = evt.event || {};
@@ -1236,7 +1238,8 @@ class SpatialHAPanel extends HTMLElement {
         const box = this.shadowRoot.getElementById("mqttMonitorBox");
         if (box) box.textContent = this._monitorLog.join("\n");
       }, { type: "spatialha/mqtt/monitor", subscribe: true });
-    } catch {
+    } catch (err) {
+      this._monitorError = `Monitor failed to start: ${(err && err.message) || err || "unknown error"}`;
       this._monitorUnsub = null;
     }
     this._updateTab("ble");
@@ -1561,7 +1564,11 @@ class SpatialHAPanel extends HTMLElement {
             <button class="btn ${this._monitorUnsub ? "" : "btn-secondary"}" id="mqttMonitorToggle">${this._monitorUnsub ? "Stop" : "Start"}</button>
           </div>
           <p style="font-size:12px;color:var(--text-secondary)">Live view of every message published on the <code>spatialble/#</code> topic. Useful for verifying that scanners are actually transmitting.</p>
-          <div id="mqttMonitorBox" style="font-family:monospace;font-size:11px;background:var(--sidebar-bg);border:1px solid var(--divider);border-radius:8px;padding:10px;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">${this._monitorLog.length ? esc(this._monitorLog.join("\n")) : "Monitor is off. Click Start to begin capturing messages."}</div>
+          <div id="mqttMonitorBox" style="font-family:monospace;font-size:11px;background:var(--sidebar-bg);border:1px solid var(--divider);border-radius:8px;padding:10px;height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">${this._monitorError
+            ? esc(this._monitorError)
+            : this._monitorUnsub
+              ? (this._monitorLog.length ? esc(this._monitorLog.join("\n")) : "Monitoring... waiting for messages on spatialble/#. If nothing appears, check that your scanners are publishing and the broker is reachable.")
+              : "Monitor is off. Click Start to begin capturing messages."}</div>
         </div>`;
       el.querySelector("#mqttMonitorToggle").onclick = () => this._toggleMonitor();
     } else if (tab === "about") {
