@@ -126,9 +126,10 @@ async def handle_mqtt_monitor(
     subs: dict[int, Callable[[str, bytes], None]] = data.setdefault(
         "mqtt_monitor_subs", {}
     )
+    conn_key = id(connection)
 
     if not msg["subscribe"]:
-        subs.pop(connection.id, None)
+        subs.pop(conn_key, None)
         connection.subscriptions.pop(msg["id"], None)
         connection.send_result(msg["id"])
         return
@@ -144,9 +145,9 @@ async def handle_mqtt_monitor(
         )
 
     def unsubscribe() -> None:
-        subs.pop(connection.id, None)
+        subs.pop(conn_key, None)
 
-    subs[connection.id] = forward
+    subs[conn_key] = forward
     connection.subscriptions[msg["id"]] = unsubscribe
     connection.send_result(msg["id"])
 
