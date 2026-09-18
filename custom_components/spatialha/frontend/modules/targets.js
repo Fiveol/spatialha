@@ -27,7 +27,7 @@ export const TargetsMixin = {
               if (this._activeTab === "targets" && !editing) _rerenderTargets();
             }
           },
-          { type: "spatialHA/targets/subscribe" }
+          { type: "spatialha/targets/subscribe" }
         );
         if (sub && typeof sub.then === "function") {
           sub.then((unsub) => {
@@ -50,7 +50,7 @@ export const TargetsMixin = {
     async _fetchTargetsOnce() {
       if (!this._hass) return;
       try {
-        const res = await this._hass.callWS({ type: "spatialHA/targets/list" });
+        const res = await this._hass.callWS({ type: "spatialha/targets/list" });
         this._targets = res.targets || res || [];
         this._targetsError = null;
       } catch (err) {
@@ -67,7 +67,7 @@ export const TargetsMixin = {
       if (!name) { alert("Name required"); return; }
       try {
         await this._hass.callWS({
-          type: "spatialHA/targets/create",
+          type: "spatialha/targets/create",
           name: name,
           target_type: this._targetForm.type,
           icon: this._targetForm.icon,
@@ -88,7 +88,7 @@ export const TargetsMixin = {
       if (!this._hass || !this._editingTarget) return;
       try {
         await this._hass.callWS({
-          type: "spatialHA/targets/update",
+          type: "spatialha/targets/update",
           target_id: this._editingTarget.id,
           name: this._targetForm.name.trim() || this._editingTarget.name,
           target_type: this._targetForm.type,
@@ -108,7 +108,7 @@ export const TargetsMixin = {
     async _deleteTarget(id) {
       if (!confirm("Delete target?")) return;
       try {
-        await this._hass.callWS({ type: "spatialHA/targets/delete", target_id: id });
+        await this._hass.callWS({ type: "spatialha/targets/delete", target_id: id });
         this._fetchTargetsOnce();
       } catch (e) {
         alert("Failed to delete: " + (e.message || String(e)));

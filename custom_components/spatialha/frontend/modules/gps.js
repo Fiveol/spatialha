@@ -18,7 +18,7 @@ export const GpsMixin = {
               }
             }
           },
-          { type: "spatialHA/gps/subscribe" }
+          { type: "spatialha/gps/subscribe" }
         );
         if (sub && typeof sub.then === "function") {
           sub.then((unsub) => {
@@ -45,7 +45,7 @@ export const GpsMixin = {
     async _fetchGpsOnce() {
       if (!this._hass) return;
       try {
-        const data = await this._hass.callWS({ type: "spatialHA/gps/list" });
+        const data = await this._hass.callWS({ type: "spatialha/gps/list" });
         this._gpsData = data;
         this._gpsError = null;
       } catch (err) {

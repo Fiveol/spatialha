@@ -1,4 +1,4 @@
-"""Device tracker platform for spatialHA Targets."""
+"""Device tracker platform for spatialha Targets."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ async def async_setup_entry(
 
     # Ensure device registry entries
     dev_reg = dr.async_get(hass)
-    entities: list[SpatialHATargetTracker] = []
+    entities: list[spatialhaTargetTracker] = []
 
     for target in targets:
         tid = target.get("id")
@@ -49,7 +49,7 @@ async def async_setup_entry(
                 config_entry_id=entry.entry_id,
                 identifiers={(DOMAIN, tid)},
                 name=target.get("name") or f"Target {tid[:8]}",
-                manufacturer="spatialHA",
+                manufacturer="spatialha",
                 model=target.get("type") or "Other",
                 sw_version="0.2.1",
                 via_device_id=None,
@@ -65,11 +65,11 @@ async def async_setup_entry(
         except Exception:  # noqa: BLE001
             state = "not_home"
 
-        entity = SpatialHATargetTracker(hass, target, state)
+        entity = spatialhaTargetTracker(hass, target, state)
         entities.append(entity)
 
     # Store trackers in hass.data for updates
-    trackers: dict[str, SpatialHATargetTracker] = hass.data.setdefault(DOMAIN, {}).setdefault("trackers", {})
+    trackers: dict[str, spatialhaTargetTracker] = hass.data.setdefault(DOMAIN, {}).setdefault("trackers", {})
     for ent in entities:
         trackers[ent.target_id] = ent
 
@@ -83,8 +83,8 @@ async def async_setup_entry(
     hass.data[DOMAIN]["add_tracker_entities"] = async_add_entities
 
 
-class SpatialHATargetTracker(TrackerEntity):
-    """Representation of a spatialHA Target as Device Tracker."""
+class spatialhaTargetTracker(TrackerEntity):
+    """Representation of a spatialha Target as Device Tracker."""
 
     def __init__(self, hass: HomeAssistant, target: dict, initial_state: str) -> None:
         """Initialize tracker."""
@@ -100,7 +100,7 @@ class SpatialHATargetTracker(TrackerEntity):
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.target_id)},
             "name": self._attr_name,
-            "manufacturer": "spatialHA",
+            "manufacturer": "spatialha",
             "model": target.get("type") or "Other",
         }
 
@@ -131,7 +131,7 @@ class SpatialHATargetTracker(TrackerEntity):
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.target_id)},
             "name": self._attr_name,
-            "manufacturer": "spatialHA",
+            "manufacturer": "spatialha",
             "model": target.get("type") or "Other",
         }
 

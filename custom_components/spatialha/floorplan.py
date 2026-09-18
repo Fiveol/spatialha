@@ -15,7 +15,7 @@ from .storage import (
 
 
 def _get_floorplan_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/floorplan."""
+    """Get Store for spatialha/floorplan."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_FLOORPLAN)
 
 
@@ -71,7 +71,7 @@ def _clamp_point_to_floor(floor: dict, x: float, y: float) -> tuple[float, float
 
 
 async def _async_load_floorplan(hass: HomeAssistant) -> dict:
-    """Load floorplan from .storage/spatialHA/floorplan (migrates)."""
+    """Load floorplan from .storage/spatialha/floorplan (migrates)."""
     data = await _async_load_with_migration(hass, STORAGE_KEY_FLOORPLAN)
     if not isinstance(data, dict) or "floors" not in data:
         # Check if old flat structure
@@ -167,7 +167,7 @@ async def _async_load_floorplan(hass: HomeAssistant) -> dict:
 
 
 async def _async_save_floorplan(hass: HomeAssistant, floorplan: dict) -> None:
-    """Save floorplan to .storage/spatialHA/floorplan."""
+    """Save floorplan to .storage/spatialha/floorplan."""
     store = _get_floorplan_store(hass)
     await store.async_save(floorplan)
     hass.data.setdefault(DOMAIN, {})["floorplan"] = floorplan

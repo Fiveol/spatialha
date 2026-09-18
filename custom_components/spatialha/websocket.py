@@ -1,4 +1,4 @@
-"""WebSocket API for spatialHA - all frontend queries go through backend."""
+"""WebSocket API for spatialha - all frontend queries go through backend."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def _get_version_sync() -> str:
     except Exception:  # noqa: BLE001
         pass
     try:
-        return version("spatialHA")
+        return version("spatialha")
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -51,23 +51,23 @@ async def _get_version(hass: HomeAssistant) -> str:
     cached = hass.data.get(DOMAIN, {}).get("version")
     if cached:
         return cached
-    cached = hass.data.get("spatialHA", {}).get("version")
+    cached = hass.data.get("spatialha", {}).get("version")
     if cached:
         return cached
     ver = await hass.async_add_executor_job(_get_version_sync)
     hass.data.setdefault(DOMAIN, {})["version"] = ver
-    hass.data.setdefault("spatialHA", {})["version"] = ver
+    hass.data.setdefault("spatialha", {})["version"] = ver
     return ver
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/get_version"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/get_version"})
 @websocket_api.async_response
 async def handle_get_version(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Handle spatialHA/get_version - return current integration version.
+    """Handle spatialha/get_version - return current integration version.
 
     Frontend must NEVER query version directly (no fetch), everything passes through here.
     Backend in turn reads from Home Assistant (manifest / package metadata).
@@ -92,14 +92,14 @@ async def handle_get_version_capital(
     await handle_get_version(hass, connection, msg)
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/get_info"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/get_info"})
 @websocket_api.async_response
 async def handle_get_info(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Handle spatialHA/get_info - generic info passthrough."""
+    """Handle spatialha/get_info - generic info passthrough."""
     LOGGER.debug("WebSocket get_info called: %s", msg)
     try:
         ver = await _get_version(hass)
@@ -129,8 +129,8 @@ async def handle_get_info_capital(
 
 
 def async_register_websocket(hass: HomeAssistant) -> None:
-    """Register spatialHA WebSocket commands."""
-    if hass.data.get(DOMAIN, {}).get("websocket_registered") or hass.data.get("spatialHA", {}).get(
+    """Register spatialha WebSocket commands."""
+    if hass.data.get(DOMAIN, {}).get("websocket_registered") or hass.data.get("spatialha", {}).get(
         "websocket_registered"
     ):
         LOGGER.debug("WebSocket already registered, skipping")
@@ -166,7 +166,7 @@ def async_register_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_targets.handle_targets_delete)
     websocket_api.async_register_command(hass, _ws_targets.handle_targets_subscribe)
     hass.data.setdefault(DOMAIN, {})["websocket_registered"] = True
-    hass.data.setdefault("spatialHA", {})["websocket_registered"] = True
+    hass.data.setdefault("spatialha", {})["websocket_registered"] = True
     LOGGER.info(
-        "Registered spatialHA WebSocket commands: spatialHA/get_version, spatialHA/ble/*, spatialHA/settings/*, spatialHA/targets/*"
+        "Registered spatialha WebSocket commands: spatialha/get_version, spatialha/ble/*, spatialha/settings/*, spatialha/targets/*"
     )

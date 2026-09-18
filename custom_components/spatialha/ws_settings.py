@@ -17,7 +17,7 @@ from .storage import (
 )
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/settings/get"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/settings/get"})
 @websocket_api.async_response
 async def handle_settings_get(
     hass: HomeAssistant,
@@ -38,7 +38,7 @@ async def handle_settings_get(
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): "spatialHA/settings/set", vol.Optional("update_interval"): vol.Coerce(float)}
+    {vol.Required("type"): "spatialha/settings/set", vol.Optional("update_interval"): vol.Coerce(float)}
 )
 @websocket_api.async_response
 async def handle_settings_set(
@@ -46,7 +46,7 @@ async def handle_settings_set(
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Set settings (update_interval) and persist to .storage/spatialHA.settings."""
+    """Set settings (update_interval) and persist to .storage/spatialha.settings."""
     try:
         from .storage import _async_load_settings as _load_s, _async_save_settings as _save_s
 
@@ -76,7 +76,7 @@ async def handle_settings_set(
         connection.send_error(msg["id"], "settings_set_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/tracked/get"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/tracked/get"})
 @websocket_api.async_response
 async def handle_tracked_get(
     hass: HomeAssistant,
@@ -94,7 +94,7 @@ async def handle_tracked_get(
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "spatialHA/tracked/set",
+        vol.Required("type"): "spatialha/tracked/set",
         vol.Required("address"): str,
         vol.Required("tracked"): bool,
     }
@@ -121,7 +121,7 @@ async def handle_tracked_set(
         connection.send_error(msg["id"], "tracked_set_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/tracked/clear"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/tracked/clear"})
 @websocket_api.async_response
 async def handle_tracked_clear(
     hass: HomeAssistant,

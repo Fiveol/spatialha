@@ -1,4 +1,4 @@
-"""Config flow for spatialHA."""
+"""Config flow for spatialha."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from homeassistant.data_entry_flow import FlowResult
 from .const import DOMAIN
 
 
-class spatialHAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for spatialHA."""
+class spatialhaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for spatialha."""
 
     VERSION = 1
 
@@ -25,7 +25,7 @@ class spatialHAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            return self.async_create_entry(title="spatialHA", data={})
+            return self.async_create_entry(title="spatialha", data={})
 
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema({}), description_placeholders={}

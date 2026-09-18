@@ -12,7 +12,7 @@ from .storage import _async_load_targets, _async_save_targets
 from .targets import _compute_target_state
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/targets/list"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/targets/list"})
 @websocket_api.async_response
 async def handle_targets_list(
     hass: HomeAssistant,
@@ -40,7 +40,7 @@ async def handle_targets_list(
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "spatialHA/targets/create",
+        vol.Required("type"): "spatialha/targets/create",
         vol.Required("name"): str,
         vol.Optional("target_type", default="Other"): str,
         vol.Optional("type"): str,
@@ -117,18 +117,18 @@ async def handle_targets_create(
                     config_entry_id=entry_id,
                     identifiers={(DOMAIN, new_target["id"])},
                     name=new_target["name"],
-                    manufacturer="spatialHA",
+                    manufacturer="spatialha",
                     model=new_target["type"],
                 )
                 # Create tracker entity
                 try:
-                    from .device_tracker import SpatialHATargetTracker
+                    from .device_tracker import spatialhaTargetTracker
 
                     ble_data = hass.data.get(DOMAIN, {}).get("ble_data")
                     from .targets import _compute_target_state as _cts
 
                     state = _cts(new_target, ble_data)
-                    tracker = SpatialHATargetTracker(hass, new_target, state)
+                    tracker = spatialhaTargetTracker(hass, new_target, state)
                     hass.data.setdefault(DOMAIN, {}).setdefault("trackers", {})[new_target["id"]] = tracker
                     add_entities = hass.data.get(DOMAIN, {}).get("add_tracker_entities")
                     if add_entities:
@@ -167,7 +167,7 @@ async def handle_targets_create(
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "spatialHA/targets/update",
+        vol.Required("type"): "spatialha/targets/update",
         vol.Required("target_id"): str,
         vol.Optional("name"): str,
         vol.Optional("target_type"): str,
@@ -245,7 +245,7 @@ async def handle_targets_update(
         connection.send_error(msg["id"], "targets_update_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/targets/delete", vol.Required("target_id"): str})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/targets/delete", vol.Required("target_id"): str})
 @websocket_api.async_response
 async def handle_targets_delete(
     hass: HomeAssistant,
@@ -307,7 +307,7 @@ async def handle_targets_delete(
 # --- Floorplan ---
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/targets/subscribe"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/targets/subscribe"})
 @websocket_api.async_response
 async def handle_targets_subscribe(
     hass: HomeAssistant,

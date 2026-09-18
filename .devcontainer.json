@@ -1,5 +1,5 @@
 {
-    "name": "Fiveol/spatialHA",
+    "name": "Fiveol/spatialha",
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [

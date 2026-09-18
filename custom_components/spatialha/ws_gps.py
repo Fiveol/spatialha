@@ -11,7 +11,7 @@ from .const import DOMAIN, LOGGER
 from .gps import _get_gps_data
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/gps/list"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/gps/list"})
 @websocket_api.async_response
 async def handle_gps_list(
     hass: HomeAssistant,
@@ -27,7 +27,7 @@ async def handle_gps_list(
         connection.send_error(msg["id"], "gps_list_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/gps/subscribe"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/gps/subscribe"})
 @websocket_api.async_response
 async def handle_gps_subscribe(
     hass: HomeAssistant,

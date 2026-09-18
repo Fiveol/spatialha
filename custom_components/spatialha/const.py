@@ -1,7 +1,7 @@
-"""Constants for spatialHA."""
+"""Constants for spatialha."""
 
 from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
 
-DOMAIN = "spatialHA"
+DOMAIN = "spatialha"

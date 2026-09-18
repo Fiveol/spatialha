@@ -1,4 +1,4 @@
-"""The spatialHA integration."""
+"""The spatialha integration."""
 
 from __future__ import annotations
 
@@ -93,11 +93,11 @@ __all__ = [
 ]
 
 
-PANEL_URL = "/api/panels/spatialHA/spatialHA-panel.js"
-PANEL_NAME = "spatialHA-panel"
-PANEL_TITLE = "spatialHA"
+PANEL_URL = "/api/panels/spatialha/spatialha-panel.js"
+PANEL_NAME = "spatialha-panel"
+PANEL_TITLE = "spatialha"
 PANEL_ICON = "mdi:account"
-PANEL_URL_PATH = "spatialHA"
+PANEL_URL_PATH = "spatialha"
 
 
 def _get_version_sync() -> str:
@@ -109,7 +109,7 @@ def _get_version_sync() -> str:
     except Exception:  # noqa: BLE001
         pass
     try:
-        return version("spatialHA")
+        return version("spatialha")
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -127,21 +127,21 @@ async def _get_version(hass: HomeAssistant) -> str:
     if cached:
         return cached
     # Also check capital alias cache
-    cached = hass.data.get("spatialHA", {}).get("version")
+    cached = hass.data.get("spatialha", {}).get("version")
     if cached:
         return cached
     version_str = await hass.async_add_executor_job(_get_version_sync)
     # Cache for future calls
     hass.data.setdefault(DOMAIN, {})["version"] = version_str
-    hass.data.setdefault("spatialHA", {})["version"] = version_str
+    hass.data.setdefault("spatialha", {})["version"] = version_str
     return version_str
 
 
-# --- Storage helpers for Settings and BLE data ( .storage/spatialHA/* ) ---
+# --- Storage helpers for Settings and BLE data ( .storage/spatialha/* ) ---
 
 
 async def _async_update_ble_data_and_push(hass: HomeAssistant, *_args) -> None:
-    """Fetch BLE data, store to .storage/spatialHA.* and push to subscribers."""
+    """Fetch BLE data, store to .storage/spatialha.* and push to subscribers."""
     try:
         data = _get_ble_data(hass)
         # Add timestamp
@@ -231,7 +231,7 @@ async def _async_start_ble_polling(hass: HomeAssistant) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the spatialHA integration (YAML not supported)."""
+    """Set up the spatialha integration (YAML not supported)."""
     try:
         from .websocket import async_register_websocket
 
@@ -277,8 +277,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-async def _async_remove_all_spatialHA_panels(hass: HomeAssistant) -> None:
-    """Remove every spatialHA panel that may exist (handles duplicates)."""
+async def _async_remove_all_spatialha_panels(hass: HomeAssistant) -> None:
+    """Remove every spatialha panel that may exist (handles duplicates)."""
     import inspect
 
     try:
@@ -300,7 +300,7 @@ async def _async_remove_all_spatialHA_panels(hass: HomeAssistant) -> None:
         panels = hass.data.get("frontend_panels", {})  # fallback
 
     to_remove: list[str] = []
-    # Check all registered panels - case-insensitive for spatialHA
+    # Check all registered panels - case-insensitive for spatialha
     for url, panel in list(panels.items()):
         try:
             title = getattr(panel, "sidebar_title", None) or getattr(panel, "title", None) or ""
@@ -316,8 +316,8 @@ async def _async_remove_all_spatialHA_panels(hass: HomeAssistant) -> None:
                 to_remove.append(url)
         except Exception:  # noqa: BLE001
             continue
-    # Always try known variants (both capital and lower for robustness, spatialHA is canonical)
-    for variant in ("spatialHA", "spatialha", "spatialHA-panel", "spatialha-panel"):
+    # Always try known variants (both capital and lower for robustness, spatialha is canonical)
+    for variant in ("spatialha", "spatialha", "spatialha-panel", "spatialha-panel"):
         if variant not in to_remove:
             to_remove.append(variant)
 
@@ -331,17 +331,17 @@ async def _async_remove_all_spatialHA_panels(hass: HomeAssistant) -> None:
                 res = _frontend_remove(hass, url)  # type: ignore[call-arg]
             if inspect.isawaitable(res):
                 await res
-            LOGGER.debug("Removed existing spatialHA panel %s", url)
+            LOGGER.debug("Removed existing spatialha panel %s", url)
         except Exception as err:  # noqa: BLE001
             LOGGER.debug("Could not remove panel %s: %s", url, err)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up spatialHA from a config entry and register sidebar panel."""
-    LOGGER.debug("Setting up spatialHA entry %s", entry.entry_id)
+    """Set up spatialha from a config entry and register sidebar panel."""
+    LOGGER.debug("Setting up spatialha entry %s", entry.entry_id)
 
     # Remove any lingering panels from previous installs/duplicates before registering
-    await _async_remove_all_spatialHA_panels(hass)
+    await _async_remove_all_spatialha_panels(hass)
 
     try:
         from .websocket import async_register_websocket
@@ -382,7 +382,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Serve the whole frontend directory (panel + feature modules), no blocking I/O
     frontend_dir = pathlib.Path(__file__).parent / "frontend"
     version_str = await _get_version(hass)
-    static_dir = "/api/panels/spatialHA"
+    static_dir = "/api/panels/spatialha"
     legacy_dir = "/api/panels/spatialha"
     js_url = f"{PANEL_URL}?v={version_str}"
 
@@ -444,13 +444,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         require_admin=False,
     )
 
-    LOGGER.info("Registered spatialHA panel at /%s with js_url %s", PANEL_URL_PATH, js_url)
+    LOGGER.info("Registered spatialha panel at /%s with js_url %s", PANEL_URL_PATH, js_url)
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {"panel_registered": True}
     # Keep alias for backwards compat where old entries used capital domain
-    hass.data.setdefault("spatialHA", {})
-    hass.data["spatialHA"][entry.entry_id] = {"panel_registered": True}
+    hass.data.setdefault("spatialha", {})
+    hass.data["spatialha"][entry.entry_id] = {"panel_registered": True}
 
     return True
 
@@ -465,10 +465,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except Exception:  # noqa: BLE001
             pass
 
-    await _async_remove_all_spatialHA_panels(hass)
+    await _async_remove_all_spatialha_panels(hass)
 
     hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    hass.data.get("spatialHA", {}).pop(entry.entry_id, None)
+    hass.data.get("spatialha", {}).pop(entry.entry_id, None)
 
     # If no more entries, clean up version cache and stop BLE polling
     # Check if any config entries remain for this domain
@@ -485,7 +485,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.get(DOMAIN, {}).pop("version", None)
         hass.data.get(DOMAIN, {}).pop("ble_data", None)
         # Keep settings/targets/ble_subscribers for next setup but clean up
-    if not hass.data.get("spatialHA") or not any(k != "version" and k != "websocket_registered" for k in hass.data.get("spatialHA", {})):
-        hass.data.get("spatialHA", {}).pop("version", None)
+    if not hass.data.get("spatialha") or not any(k != "version" and k != "websocket_registered" for k in hass.data.get("spatialha", {})):
+        hass.data.get("spatialha", {}).pop("version", None)
 
     return True

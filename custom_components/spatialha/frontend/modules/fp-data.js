@@ -18,7 +18,7 @@ export const FloorplanDataMixin = {
             this._renderFloorplanCanvas();
             if (this._activeTab === "home") this._renderHomeIsoCanvas();
           }
-        }, { type: "spatialHA/floorplan/subscribe" });
+        }, { type: "spatialha/floorplan/subscribe" });
         if (sub && typeof sub.then === "function") {
           sub.then((unsub) => { this._floorplanUnsub = unsub; this._floorplanLoading = false; this._fetchFloorplanOnce(); }).catch(() => { this._floorplanLoading = false; this._fetchFloorplanOnce(); });
         } else if (typeof sub === "function") { this._floorplanUnsub = sub; this._floorplanLoading = false; }
@@ -29,7 +29,7 @@ export const FloorplanDataMixin = {
     async _fetchFloorplanOnce() {
       if (!this._hass) return;
       try {
-        const fp = await this._hass.callWS({ type: "spatialHA/floorplan/get" });
+        const fp = await this._hass.callWS({ type: "spatialha/floorplan/get" });
         this._floorplan = fp;
         this._floorplanUnits = fp.units || "meters";
         if (!this._selectedFloorId && fp.floors && fp.floors.length) this._selectedFloorId = fp.active_floor_id || fp.floors[0].id;
@@ -39,7 +39,7 @@ export const FloorplanDataMixin = {
 
     async _saveFloorplan() {
       if (!this._hass || !this._floorplan) return;
-      try { this._floorplan.units = this._floorplanUnits; this._floorplan.active_floor_id = this._selectedFloorId; await this._hass.callWS({ type: "spatialHA/floorplan/set", floorplan: this._floorplan }); } catch (e) { console.error(e); }
+      try { this._floorplan.units = this._floorplanUnits; this._floorplan.active_floor_id = this._selectedFloorId; await this._hass.callWS({ type: "spatialha/floorplan/set", floorplan: this._floorplan }); } catch (e) { console.error(e); }
     },
 
     _getActiveFloor() {

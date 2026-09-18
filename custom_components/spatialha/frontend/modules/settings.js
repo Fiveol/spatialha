@@ -5,7 +5,7 @@ export const SettingsMixin = {
       this._settingsError = null;
       this._render();
       try {
-        const settings = await this._hass.callWS({ type: "spatialHA/settings/get" });
+        const settings = await this._hass.callWS({ type: "spatialha/settings/get" });
         this._settings = settings;
         this._pendingInterval = String(settings.update_interval ?? 1);
       } catch (err) {
@@ -20,7 +20,7 @@ export const SettingsMixin = {
       if (!this._hass || this._trackedLoading) return;
       this._trackedLoading = true;
       try {
-        const res = await this._hass.callWS({ type: "spatialHA/tracked/get" });
+        const res = await this._hass.callWS({ type: "spatialha/tracked/get" });
         this._trackedDevices = (res && Array.isArray(res.devices)) ? res.devices : [];
       } catch (err) {
         this._trackedDevices = [];
@@ -45,7 +45,7 @@ export const SettingsMixin = {
       this._trackedDevices = cur;
       this._render();
       try {
-        const res = await this._hass.callWS({ type: "spatialHA/tracked/set", address: addr, tracked: !!on });
+        const res = await this._hass.callWS({ type: "spatialha/tracked/set", address: addr, tracked: !!on });
         if (res && Array.isArray(res.devices)) {
           this._trackedDevices = res.devices;
           this._render();
@@ -62,7 +62,7 @@ export const SettingsMixin = {
       this._trackedSaving = true;
       this._render();
       try {
-        const res = await this._hass.callWS({ type: "spatialHA/tracked/clear" });
+        const res = await this._hass.callWS({ type: "spatialha/tracked/clear" });
         this._trackedDevices = (res && Array.isArray(res.devices)) ? res.devices : [];
       } catch (err) {
         // Leave state as-is on failure.
@@ -85,7 +85,7 @@ export const SettingsMixin = {
       this._settingsError = null;
       this._render();
       try {
-        const res = await this._hass.callWS({ type: "spatialHA/settings/set", update_interval: val });
+        const res = await this._hass.callWS({ type: "spatialha/settings/set", update_interval: val });
         this._settings = res;
         this._pendingInterval = String(res.update_interval);
       } catch (err) {

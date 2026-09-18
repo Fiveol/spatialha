@@ -29,7 +29,7 @@ export const BleMixin = {
               }
             }
           },
-          { type: "spatialHA/ble/subscribe" }
+          { type: "spatialha/ble/subscribe" }
         );
         if (sub && typeof sub.then === "function") {
           sub.then((unsub) => {
@@ -56,7 +56,7 @@ export const BleMixin = {
     async _fetchBleOnce() {
       if (!this._hass) return;
       try {
-        const data = await this._hass.callWS({ type: "spatialHA/ble/get_data" });
+        const data = await this._hass.callWS({ type: "spatialha/ble/get_data" });
         this._bleData = data;
         this._bleError = null;
       } catch (err) {

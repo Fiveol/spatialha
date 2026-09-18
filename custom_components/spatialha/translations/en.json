@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "spatialha",
+        "description": "Set up the spatialha integration.",
+        "data": {}
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single instance of spatialha is allowed."
+    },
+    "create_entry": {
+      "default": "Successfully added spatialha"
+    }
+  }
+}

@@ -11,7 +11,7 @@ from .ble import _get_ble_data
 from .const import DOMAIN, LOGGER
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/ble/get_data"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/ble/get_data"})
 @websocket_api.async_response
 async def handle_ble_get_data(
     hass: HomeAssistant,
@@ -27,7 +27,7 @@ async def handle_ble_get_data(
         connection.send_error(msg["id"], "ble_get_data_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/get_ble_data"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/get_ble_data"})
 @websocket_api.async_response
 async def handle_get_ble_data_alias(
     hass: HomeAssistant,
@@ -49,7 +49,7 @@ async def handle_ble_get_data_capital(
     await handle_ble_get_data(hass, connection, msg)
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/ble/subscribe"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/ble/subscribe"})
 @websocket_api.async_response
 async def handle_ble_subscribe(
     hass: HomeAssistant,

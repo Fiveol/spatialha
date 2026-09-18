@@ -1,4 +1,4 @@
-"""Storage for spatialHA (.storage/spatialHA/*) with legacy migration."""
+"""Storage for spatialha (.storage/spatialha/*) with legacy migration."""
 
 from __future__ import annotations
 
@@ -8,48 +8,48 @@ from homeassistant.helpers.storage import Store
 from .const import DOMAIN, LOGGER
 
 
-STORAGE_KEY_SETTINGS = "spatialHA/settings"
-STORAGE_KEY_BLE_DATA = "spatialHA/ble_data"
-STORAGE_KEY_BLE_SIGHTINGS = "spatialHA/sightings"
-STORAGE_KEY_TARGETS = "spatialHA/targets"
-STORAGE_KEY_FLOORPLAN = "spatialHA/floorplan"
-STORAGE_KEY_TRACKED = "spatialHA/tracked"
+STORAGE_KEY_SETTINGS = "spatialha/settings"
+STORAGE_KEY_BLE_DATA = "spatialha/ble_data"
+STORAGE_KEY_BLE_SIGHTINGS = "spatialha/sightings"
+STORAGE_KEY_TARGETS = "spatialha/targets"
+STORAGE_KEY_FLOORPLAN = "spatialha/floorplan"
+STORAGE_KEY_TRACKED = "spatialha/tracked"
 STORAGE_VERSION = 1
 DEFAULT_UPDATE_INTERVAL = 1.0
 
 # Legacy keys for migration (old files with dot prefix)
 LEGACY_STORAGE_KEYS = {
-    "spatialHA/settings": "spatialHA.settings",
-    "spatialHA/ble_data": "spatialHA.ble_data",
-    "spatialHA/sightings": "spatialHA.sightings",
-    "spatialHA/targets": "spatialHA.targets",
-    "spatialHA/floorplan": "spatialHA.floorplan",
-    "spatialHA/tracked": "spatialHA.tracked",
+    "spatialha/settings": "spatialha.settings",
+    "spatialha/ble_data": "spatialha.ble_data",
+    "spatialha/sightings": "spatialha.sightings",
+    "spatialha/targets": "spatialha.targets",
+    "spatialha/floorplan": "spatialha.floorplan",
+    "spatialha/tracked": "spatialha.tracked",
 }
 
 
 def _get_settings_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/settings (new folder) - .storage/spatialHA/settings."""
+    """Get Store for spatialha/settings (new folder) - .storage/spatialha/settings."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_SETTINGS)
 
 
 def _get_ble_data_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/ble_data."""
+    """Get Store for spatialha/ble_data."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_BLE_DATA)
 
 
 def _get_ble_sightings_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/sightings (extra file for future)."""
+    """Get Store for spatialha/sightings (extra file for future)."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_BLE_SIGHTINGS)
 
 
 def _get_targets_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/targets."""
+    """Get Store for spatialha/targets."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_TARGETS)
 
 
 def _get_tracked_store(hass: HomeAssistant) -> Store:
-    """Get Store for spatialHA/tracked (user-tracked BLE addresses)."""
+    """Get Store for spatialha/tracked (user-tracked BLE addresses)."""
     return Store(hass, STORAGE_VERSION, STORAGE_KEY_TRACKED)
 
 
@@ -107,7 +107,7 @@ async def _async_load_with_migration(hass: HomeAssistant, new_key: str) -> dict 
 
 
 async def _async_load_settings(hass: HomeAssistant) -> dict:
-    """Load settings from .storage/spatialHA/settings (migrates from spatialHA.settings)."""
+    """Load settings from .storage/spatialha/settings (migrates from spatialha.settings)."""
     data = await _async_load_with_migration(hass, STORAGE_KEY_SETTINGS)
     if not isinstance(data, dict):
         data = {}
@@ -126,14 +126,14 @@ async def _async_load_settings(hass: HomeAssistant) -> dict:
 
 
 async def _async_save_settings(hass: HomeAssistant, settings: dict) -> None:
-    """Save settings to .storage/spatialHA/settings."""
+    """Save settings to .storage/spatialha/settings."""
     store = _get_settings_store(hass)
     await store.async_save(settings)
     hass.data.setdefault(DOMAIN, {})["settings"] = settings
 
 
 async def _async_load_targets(hass: HomeAssistant) -> list[dict]:
-    """Load targets from .storage/spatialHA/targets (migrates from spatialHA.targets)."""
+    """Load targets from .storage/spatialha/targets (migrates from spatialha.targets)."""
     data = await _async_load_with_migration(hass, STORAGE_KEY_TARGETS)
     if isinstance(data, dict) and "targets" in data:
         # Old format: {"targets": [...]}
@@ -164,7 +164,7 @@ def _normalize_tracked(devices) -> list[str]:
 
 
 async def _async_load_tracked(hass: HomeAssistant) -> list[str]:
-    """Load tracked BLE addresses from .storage/spatialHA/tracked."""
+    """Load tracked BLE addresses from .storage/spatialha/tracked."""
     try:
         data = await _async_load_with_migration(hass, STORAGE_KEY_TRACKED)
     except Exception:  # noqa: BLE001
@@ -180,7 +180,7 @@ async def _async_load_tracked(hass: HomeAssistant) -> list[str]:
 
 
 async def _async_save_tracked(hass: HomeAssistant, devices: list[str]) -> list[str]:
-    """Save tracked BLE addresses to .storage/spatialHA/tracked."""
+    """Save tracked BLE addresses to .storage/spatialha/tracked."""
     tracked = _normalize_tracked(devices)
     store = _get_tracked_store(hass)
     await store.async_save({"devices": tracked})
@@ -189,7 +189,7 @@ async def _async_save_tracked(hass: HomeAssistant, devices: list[str]) -> list[s
 
 
 async def _async_save_targets(hass: HomeAssistant, targets: list[dict]) -> None:
-    """Save targets to .storage/spatialHA/targets."""
+    """Save targets to .storage/spatialha/targets."""
     store = _get_targets_store(hass)
     await store.async_save({"targets": targets})
     hass.data.setdefault(DOMAIN, {})["targets"] = targets

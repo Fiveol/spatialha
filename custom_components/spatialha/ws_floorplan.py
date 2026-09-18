@@ -11,7 +11,7 @@ from .const import DOMAIN, LOGGER
 from .floorplan import _async_load_floorplan, _async_save_floorplan
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/floorplan/get"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/floorplan/get"})
 @websocket_api.async_response
 async def handle_floorplan_get(
     hass: HomeAssistant,
@@ -34,7 +34,7 @@ async def handle_floorplan_get(
 
 @websocket_api.websocket_command(
     {
-        vol.Required("type"): "spatialHA/floorplan/set",
+        vol.Required("type"): "spatialha/floorplan/set",
         vol.Optional("floorplan"): dict,
         vol.Optional("floors"): list,
         vol.Optional("units"): str,
@@ -68,7 +68,7 @@ async def handle_floorplan_set(
         connection.send_error(msg["id"], "floorplan_set_failed", str(err))
 
 
-@websocket_api.websocket_command({vol.Required("type"): "spatialHA/floorplan/subscribe"})
+@websocket_api.websocket_command({vol.Required("type"): "spatialha/floorplan/subscribe"})
 @websocket_api.async_response
 async def handle_floorplan_subscribe(
     hass: HomeAssistant,

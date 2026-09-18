@@ -1,11 +1,11 @@
 {
-  "domain": "spatialHA",
-  "name": "spatialHA",
+  "domain": "spatialha",
+  "name": "spatialha",
   "codeowners": ["@Fiveol"],
   "config_flow": true,
-  "documentation": "https://github.com/Fiveol/spatialHA",
+  "documentation": "https://github.com/Fiveol/spatialha",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/Fiveol/spatialHA/issues",
+  "issue_tracker": "https://github.com/Fiveol/spatialha/issues",
   "requirements": [],
   "version": "0.9.1.13"
   "dependencies": [
