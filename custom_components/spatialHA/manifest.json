@@ -8,4 +8,7 @@
   "issue_tracker": "https://github.com/Fiveol/spatialHA/issues",
   "requirements": [],
   "version": "0.9.1.13"
+  "dependencies": [
+    "http",
+    "bluetooth"
 }
