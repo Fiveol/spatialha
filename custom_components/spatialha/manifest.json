@@ -7,8 +7,9 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Fiveol/spatialha/issues",
   "requirements": [],
-  "version": "0.9.1.13"
+  "version": "0.9.1.13",
   "dependencies": [
     "http",
     "bluetooth"
+  ]
 }
