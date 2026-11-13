@@ -175,7 +175,8 @@ def _get_ble_data(hass: HomeAssistant) -> dict:
         addr_index: dict[str, tuple[str | None, str | None]] = {}
         if dev_reg:
             try:
-                for device in dev_reg.devices.values():
+                # Use .items() to avoid deprecated direct dict-style mapping
+                for device_id, device in dev_reg.devices.items():
                     area_name = None
                     if device.area_id and area_reg:
                         try:
