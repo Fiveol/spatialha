@@ -171,6 +171,10 @@ export const TargetsMixin = {
       const idx = this._targetForm.gps_entities.indexOf(entity_id);
       if (idx >= 0) this._targetForm.gps_entities.splice(idx, 1);
       else this._targetForm.gps_entities.push(entity_id);
+      // Also toggle this GPS entity in the tracked devices list (same checkbox method as BLE)
+      if (this._hass && typeof this._setTracked === "function") {
+        this._setTracked(entity_id, this._targetForm.gps_entities.includes(entity_id));
+      }
       this._render();
     },
 
@@ -204,40 +208,46 @@ export const TargetsMixin = {
       let formHtml = "";
       if (this._showAddForm) {
         const isEdit = !!this._editingTarget;
-        // Available BLE devices for assignment
+        // Available BLE devices for assignment - only tracked ones
         let bleOptions = "";
         const available = (this._bleData && (this._bleData.devices || [])) || [];
+        const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
+        const trackedAddrs = new Set(_tracked.map(a => String(a).toUpperCase()));
+        const filteredAvailable = available.filter(d => trackedAddrs.has(String(d.address).toUpperCase()));
         const allAddrs = new Set();
-        available.forEach(d => allAddrs.add(d.address));
+        filteredAvailable.forEach(d => allAddrs.add(d.address));
         (this._targetForm.ble_devices || []).forEach(a => allAddrs.add(a));
         if (allAddrs.size === 0) {
-          bleOptions = `<p><em>No Bluetooth devices discovered yet.</em></p>`;
+          bleOptions = `<p><em>No tracked Bluetooth devices discovered yet.</em></p>`;
         } else {
           bleOptions = `<div style="max-height:180px; overflow:auto; border:1px solid var(--divider-color, #ccc); padding:8px; border-radius:6px;">`;
           allAddrs.forEach(addr => {
             const upper = String(addr).toUpperCase();
             const checked = this._targetForm.ble_devices.some(a => String(a).toUpperCase() === upper) ? "checked" : "";
             let name = upper;
-            const dev = available.find(d => String(d.address).toUpperCase() === upper);
+            const dev = filteredAvailable.find(d => String(d.address).toUpperCase() === upper);
             if (dev && dev.name) name = `${dev.name} (${upper})`;
             bleOptions += `<label style="display:block; margin:4px 0;"><input type="checkbox" data-ble-addr="${this._esc(upper)}" ${checked}> <code>${this._esc(upper)}</code> ${this._esc(name !== upper ? " - " + dev.name : "")}</label>`;
           });
           bleOptions += `</div>`;
           bleOptions += `<p><small>Custom MAC/UUID:</small> <input id="ble-custom" placeholder="AA:BB:CC:DD:EE:FF" style="width:200px"> <button id="ble-add-custom">Add</button></p>`;
         }
-        // GPS options
+        // GPS options - only tracked entities
         let gpsOptions = "";
         const gpsAvailable = (this._gpsData && (this._gpsData.entities || [])) || [];
+        const _trackedArr = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
+        const trackedGpsSet = new Set(_trackedArr);
+        const filteredGpsAvailable = gpsAvailable.filter(e => trackedGpsSet.has(e.entity_id));
         const allGps = new Set();
-        gpsAvailable.forEach(e => allGps.add(e.entity_id));
+        filteredGpsAvailable.forEach(e => allGps.add(e.entity_id));
         (this._targetForm.gps_entities || []).forEach(e => allGps.add(e));
         if (allGps.size === 0) {
-          gpsOptions = `<p><em>No Device Tracker entities found.</em></p>`;
+          gpsOptions = `<p><em>No tracked Device Tracker entities found.</em></p>`;
         } else {
           gpsOptions = `<div style="max-height:180px; overflow:auto; border:1px solid var(--divider-color, #ccc); padding:8px; border-radius:6px;">`;
           allGps.forEach(eid => {
             const checked = this._targetForm.gps_entities.includes(eid) ? "checked" : "";
-            const ent = gpsAvailable.find(x => x.entity_id === eid);
+            const ent = filteredGpsAvailable.find(x => x.entity_id === eid);
             const label = ent ? `${ent.name || ent.entity_id} (${ent.state})` : eid;
             gpsOptions += `<label style="display:block; margin:4px 0;"><input type="checkbox" data-gps-entity="${this._esc(eid)}" ${checked}> <code>${this._esc(eid)}</code> ${this._esc(ent ? " - " + (ent.name || "") + " [" + ent.state + "]" : "")}</label>`;
           });

@@ -153,7 +153,7 @@ class spatialhaPanel extends HTMLElement {
     if (tab === "gps" && !this._gpsUnsub) this._ensureGpsSubscription();
     if (tab === "floorplan" && !this._floorplanUnsub) this._ensureFloorplanSubscription();
     if (tab === "floorplan" && !this._bleData && !this._bleLoading) this._fetchBleOnce();
-    if ((tab === "home" || tab === "ble" || tab === "settings") && !Array.isArray(this._trackedDevices) && !this._trackedLoading) this._fetchTracked();
+    if ((tab === "home" || tab === "ble" || tab === "settings" || tab === "tracked") && !Array.isArray(this._trackedDevices) && !this._trackedLoading) this._fetchTracked();
     if (tab === "home") {
       if (!this._floorplan && !this._floorplanLoading && !this._floorplanUnsub) this._ensureFloorplanSubscription();
       else this._renderHomeIsoCanvas();
@@ -466,6 +466,38 @@ class spatialhaPanel extends HTMLElement {
       </div>
     `;
 
+    let trackedContent = "";
+    if (this._activeTab === "tracked") {
+      const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
+      const _trackedCount2 = _tracked.length;
+      trackedContent = `
+        <div class="card">
+          <h2>Tracked Devices (${_trackedCount2})</h2>
+          <p>Devices tracked for home/away detection and home map display.</p>
+          <div style="max-height:300px; overflow:auto; border:1px solid var(--divider-color, #ccc); padding:8px; border-radius:6px; margin:12px 0; background: var(--card-background-color, #fafafa);">
+            ${_tracked.length === 0
+              ? `<p><em>No tracked devices.</em> <button id="tracked-clear-none" style="float:right;">Add devices from BLE or GPS tabs</button></p>`
+              : _tracked.map(addr => {
+                  const upper = String(addr || "").toUpperCase().trim();
+                  const isGps = upper.startsWith("device_tracker.");
+                  const label = isGps
+                    ? upper
+                    : upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)
+                      ? upper
+                      : upper;
+                  const lastSeen = isGps ? "GPS entity" : "BLE device";
+                  return `<div style="margin:4px 0; padding:4px; border:1px solid var(--divider-color, #e0e0e0); border-radius:4px;">
+                    <span style="font-weight:500; color:var(--primary-color, #03a9f4)">${this._esc(label)}</span>
+                    <span style="color:var(--secondary-text-color, #666); font-size:12px;">(${lastSeen})</span>
+                    <button data-remove-tracked="${this._esc(upper)}" style="float:right; margin-left:8px; padding:4px 8px; font-size:12px; color:var(--error-color, #db4437);">Remove</button>
+                  </div>`;
+                }).join("")}
+          </div>
+          <p><button id="tracked-clear-all" style="float:left; margin-bottom:12px; padding:6px 12px;">Clear all tracked devices</button> <small>Only tracked devices appear on the Home map (unless "Show all devices" is on).</small></p>
+        </div>
+      `;
+    }
+
     let targetsContent = "";
     if (this._activeTab === "targets") {
       targetsContent = this._viewOrLoading("_renderTargets");
@@ -496,6 +528,7 @@ class spatialhaPanel extends HTMLElement {
     else if (this._activeTab === "targets") mainInner = targetsContent;
     else if (this._activeTab === "settings") mainInner = settingsContent;
     else if (this._activeTab === "about") mainInner = aboutContent;
+    else if (this._activeTab === "tracked") mainInner = trackedContent;
 
     this.shadowRoot.innerHTML = `
       <style>${style}</style>
@@ -508,6 +541,7 @@ class spatialhaPanel extends HTMLElement {
           <button role="tab" aria-selected="${this._activeTab === "targets"}" data-tab="targets" class="${this._activeTab === "targets" ? "active" : ""}">Targets</button>
           <button role="tab" aria-selected="${this._activeTab === "settings"}" data-tab="settings" class="${this._activeTab === "settings" ? "active" : ""}">Settings</button>
           <button role="tab" aria-selected="${this._activeTab === "about"}" data-tab="about" class="${this._activeTab === "about" ? "active" : ""}">About</button>
+          <button role="tab" aria-selected="${this._activeTab === "tracked"}" data-tab="tracked" class="${this._activeTab === "tracked" ? "active" : ""}">Tracked</button>
         </div>
         <div class="tab-content">
           ${mainInner}
@@ -684,6 +718,18 @@ class spatialhaPanel extends HTMLElement {
     });
     const trackedClear = this.shadowRoot.getElementById("tracked-clear");
     if (trackedClear) trackedClear.addEventListener("click", () => {
+      if (typeof this._clearTracked === "function") this._clearTracked();
+    });
+    // Remove individual tracked device
+    this.shadowRoot.querySelectorAll("[data-remove-tracked]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const addr = b.getAttribute("data-remove-tracked");
+        if (typeof this._setTracked === "function") this._setTracked(addr, false);
+      });
+    });
+    // Clear all tracked devices
+    const trackedClearAll = this.shadowRoot.getElementById("tracked-clear-all");
+    if (trackedClearAll) trackedClearAll.addEventListener("click", () => {
       if (typeof this._clearTracked === "function") this._clearTracked();
     });
     this.shadowRoot.querySelectorAll("[data-fp-view]").forEach((b) => b.addEventListener("click", () => {
