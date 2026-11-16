@@ -466,37 +466,39 @@ class spatialhaPanel extends HTMLElement {
       </div>
     `;
 
-    let trackedContent = "";
+    // Helper: format a tracking key into a human-readable label.
+// Keys are either MAC addresses (AA:BB:CC:DD:EE:FF) or iBeacon UUID-MAJOR-MINOR.
+// Defined outside the tracked-tab conditional so it's always in scope for _render().
+_formatTrackedLabel = (key) => {
+  if (!key) return "";
+  const upper = String(key).trim().toUpperCase();
+  // MAC address pattern: AA:BB:CC:DD:EE:FF
+  if (upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)) {
+    return upper;
+  }
+  // iBeacon UUID-MAJOR-MINOR pattern: UUID-MAJOR-MINOR
+  // UUID has dashes, major/minor are integers
+  const uuidPattern = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+  const match = upper.match(uuidPattern);
+  if (match) {
+    const uuid = match[0];
+    const rest = upper.slice(uuid.length + 1); // after the first dash
+    const parts = rest.split("-");
+    if (parts.length >= 2) {
+      const major = parts[0] || "0";
+      const minor = parts[1] || "0";
+      return `iBeacon ${uuid} (${major}/${minor})`;
+    }
+    return `iBeacon ${uuid}`;
+  }
+  // Fallback: just show the key
+  return upper;
+};
+
+let trackedContent = "";
     if (this._activeTab === "tracked") {
       const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
       const _trackedCount2 = _tracked.length;
-      // Helper: format a tracking key into a human-readable label.
-      // Keys are either MAC addresses (AA:BB:CC:DD:EE:FF) or iBeacon UUID-MAJOR-MINOR.
-      _formatTrackedLabel = (key) => {
-        if (!key) return "";
-        const upper = String(key).trim().toUpperCase();
-        // MAC address pattern: AA:BB:CC:DD:EE:FF
-        if (upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)) {
-          return upper;
-        }
-        // iBeacon UUID-MAJOR-MINOR pattern: UUID-MAJOR-MINOR
-        // UUID has dashes, major/minor are integers
-        const uuidPattern = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
-        const match = upper.match(uuidPattern);
-        if (match) {
-          const uuid = match[0];
-          const rest = upper.slice(uuid.length + 1); // after the first dash
-          const parts = rest.split("-");
-          if (parts.length >= 2) {
-            const major = parts[0] || "0";
-            const minor = parts[1] || "0";
-            return `iBeacon ${uuid} (${major}/${minor})`;
-          }
-          return `iBeacon ${uuid}`;
-        }
-        // Fallback: just show the key
-        return upper;
-      };
       trackedContent = `
         <div class="card">
           <h2>Tracked Devices (${_trackedCount2})</h2>
