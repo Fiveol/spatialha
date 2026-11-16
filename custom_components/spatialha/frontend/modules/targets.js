@@ -212,8 +212,33 @@ export const TargetsMixin = {
         let bleOptions = "";
         const available = (this._bleData && (this._bleData.devices || [])) || [];
         const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
-        const trackedAddrs = new Set(_tracked.map(a => String(a).toUpperCase()));
-        const filteredAvailable = available.filter(d => trackedAddrs.has(String(d.address).toUpperCase()));
+        // Use the same key normalization as the backend _tracking_key for iBeacon deduplication.
+        // Tracked keys are canonical: MAC upper or "UUID-MAJOR-MINOR".
+        _parseTrackedKey = (key) => {
+          if (!key) return null;
+          const upper = String(key).trim().toUpperCase();
+          if (upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)) return { type: "mac", value: upper };
+          const uuidPattern = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+          const m = upper.match(uuidPattern);
+          if (m) {
+            const uuid = m[0];
+            const rest = upper.slice(uuid.length + 1);
+            const parts = rest.split("-");
+            if (parts.length >= 2) return { type: "ibeacon", uuid, major: parts[0], minor: parts[1] };
+            return { type: "ibeacon", uuid, major: parts[0] || "0", minor: "0" };
+          }
+          return null;
+        };
+        _trackedKeys = _tracked.map(k => _parseTrackedKey(k)).filter(Boolean);
+        _trackedMacs = new Set(_trackedKeys.map(k => k.value));
+        _trackedIbeacons = new Set(_trackedKeys.filter(k => k.type === "ibeacon").map(k => `${k.uuid}-${k.major}-${k.minor}`));
+        const _isTrackedMac = (addr) => _trackedMacs.has(String(addr).trim().toUpperCase());
+        const _isTrackedIbeacon = (dev) => {
+          if (!dev.ibeacon) return false;
+          const ibkey = `${dev.ibeacon.uuid}-${dev.ibeacon.major}-${dev.ibeacon.minor}`.toUpperCase();
+          return _trackedIbeacons.has(ibkey);
+        };
+        const filteredAvailable = available.filter(d => _isTrackedMac(d.address) || _isTrackedIbeacon(d));
         const allAddrs = new Set();
         filteredAvailable.forEach(d => allAddrs.add(d.address));
         (this._targetForm.ble_devices || []).forEach(a => allAddrs.add(a));

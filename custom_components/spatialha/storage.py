@@ -147,17 +147,81 @@ async def _async_load_targets(hass: HomeAssistant) -> list[dict]:
     return targets
 
 
+def _parse_ibeacon_key(s: str) -> tuple[str, int, int] | None:
+    """Try to parse a tracking key as iBeacon UUID-Major-Minor.
+
+    Returns (uuid_upper, major, minor) or None if not a iBeacon key.
+    Accepted formats:
+      - "UUID-MAJOR-MINOR"  (e.g. "00000000-0000-0000-0000-000000000000-1-2")
+      - "UUID:MAJOR:MINOR"  (e.g. "00000000-0000-0000-0000-000000000000:1:2")
+      - "UUID MAJOR MINOR"  (e.g. "00000000-0000-0000-0000-000000000000 1 2")
+      - plain UUID alone (no major/minor) -> returns (uuid, 0, 0)
+    """
+    s = s.strip()
+    if not s:
+        return None
+    # Check for UUID-only (no dashes or separators -> likely a MAC, not a UUID)
+    # UUID has dashes: 8-4-4-4-12
+    # If it has dashes and matches UUID pattern, treat as UUID-only iBeacon key
+    import re as _re
+    uuid_pattern = _re.compile(
+        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    )
+    # Separator patterns
+    for sep in (("-", 2), (":", 2), (" ", 2)):
+        parts = s.split(sep[0])
+        if len(parts) >= 3:
+            # Could be UUID-MAJOR-MINOR or just MAC-like
+            # Validate part 1 as UUID
+            if uuid_pattern.match(parts[0]):
+                try:
+                    major = int(parts[1])
+                    minor = int(parts[2])
+                    # Normalize UUID to uppercase
+                    uuid_upper = parts[0].upper()
+                    return (uuid_upper, major, minor)
+                except (ValueError, IndexError):
+                    pass
+    # Check if it looks like a plain UUID (with dashes) - treat as UUID-only iBeacon
+    if uuid_pattern.match(s):
+        uuid_upper = s.upper()
+        return (uuid_upper, 0, 0)
+    # Otherwise, treat as MAC address - return as-is for MAC-based tracking
+    return None
+
+
+def _tracking_key(addr_or_key: str) -> str:
+    """Convert a device address/tracking key to its canonical tracking form.
+
+    For iBeacons (UUID-Major-Minor): returns "UUID-MAJOR-MINOR" (uppercase).
+    For MAC addresses: returns the uppercase MAC address.
+    """
+    key = _parse_ibeacon_key(addr_or_key)
+    if key:
+        uuid, major, minor = key
+        return f"{uuid}-{major}-{minor}"
+    # MAC address - just uppercase it
+    return addr_or_key.strip().upper()
+
+
 def _normalize_tracked(devices) -> list[str]:
-    """Normalize tracked list to sorted uppercase address strings."""
+    """Normalize tracked list to sorted canonical tracking keys.
+
+    Handles both MAC addresses and iBeacon UUID-Major-Minor identifiers.
+    IBeacons with different MACs but same UUID/Major/Minor will be deduplicated.
+    """
     out: list[str] = []
     try:
         items = devices if isinstance(devices, list) else []
         for d in items:
             if not isinstance(d, str):
                 continue
-            s = d.strip().upper()
-            if s and s not in out:
-                out.append(s)
+            s = d.strip()
+            if not s:
+                continue
+            key = _tracking_key(s)
+            if key and key not in out:
+                out.append(key)
     except Exception:  # noqa: BLE001
         pass
     return sorted(out)

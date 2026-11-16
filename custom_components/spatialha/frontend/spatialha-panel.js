@@ -470,6 +470,33 @@ class spatialhaPanel extends HTMLElement {
     if (this._activeTab === "tracked") {
       const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
       const _trackedCount2 = _tracked.length;
+      // Helper: format a tracking key into a human-readable label.
+      // Keys are either MAC addresses (AA:BB:CC:DD:EE:FF) or iBeacon UUID-MAJOR-MINOR.
+      _formatTrackedLabel = (key) => {
+        if (!key) return "";
+        const upper = String(key).trim().toUpperCase();
+        // MAC address pattern: AA:BB:CC:DD:EE:FF
+        if (upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)) {
+          return upper;
+        }
+        // iBeacon UUID-MAJOR-MINOR pattern: UUID-MAJOR-MINOR
+        // UUID has dashes, major/minor are integers
+        const uuidPattern = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+        const match = upper.match(uuidPattern);
+        if (match) {
+          const uuid = match[0];
+          const rest = upper.slice(uuid.length + 1); // after the first dash
+          const parts = rest.split("-");
+          if (parts.length >= 2) {
+            const major = parts[0] || "0";
+            const minor = parts[1] || "0";
+            return `iBeacon ${uuid} (${major}/${minor})`;
+          }
+          return `iBeacon ${uuid}`;
+        }
+        // Fallback: just show the key
+        return upper;
+      };
       trackedContent = `
         <div class="card">
           <h2>Tracked Devices (${_trackedCount2})</h2>
@@ -478,18 +505,10 @@ class spatialhaPanel extends HTMLElement {
             ${_tracked.length === 0
               ? `<p><em>No tracked devices.</em> <button id="tracked-clear-none" style="float:right;">Add devices from BLE or GPS tabs</button></p>`
               : _tracked.map(addr => {
-                  const upper = String(addr || "").toUpperCase().trim();
-                  const isGps = upper.startsWith("device_tracker.");
-                  const label = isGps
-                    ? upper
-                    : upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)
-                      ? upper
-                      : upper;
-                  const lastSeen = isGps ? "GPS entity" : "BLE device";
+                  const label = _formatTrackedLabel(addr);
                   return `<div style="margin:4px 0; padding:4px; border:1px solid var(--divider-color, #e0e0e0); border-radius:4px;">
                     <span style="font-weight:500; color:var(--primary-color, #03a9f4)">${this._esc(label)}</span>
-                    <span style="color:var(--secondary-text-color, #666); font-size:12px;">(${lastSeen})</span>
-                    <button data-remove-tracked="${this._esc(upper)}" style="float:right; margin-left:8px; padding:4px 8px; font-size:12px; color:var(--error-color, #db4437);">Remove</button>
+                    <button data-remove-tracked="${this._esc(addr)}" style="float:right; margin-left:8px; padding:4px 8px; font-size:12px; color:var(--error-color, #db4437);">Remove</button>
                   </div>`;
                 }).join("")}
           </div>

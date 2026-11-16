@@ -108,7 +108,42 @@ export const BleMixin = {
       const devices = (this._bleData.devices || []).filter(_match);
       const updated = this._bleData.last_updated ? new Date(this._bleData.last_updated * 1000).toLocaleTimeString() : "";
       const _tracked = Array.isArray(this._trackedDevices) ? this._trackedDevices : [];
-      const _isTracked = (d) => _tracked.includes(String(d.address || "").toUpperCase());
+      // Parse a tracking key into its components for matching.
+      // Tracked keys are canonical form: MAC upper (e.g. "AA:BB:CC:DD:EE:FF") or iBeacon "UUID-MAJOR-MINOR".
+      _parseTrackedKey = (key) => {
+        if (!key) return null;
+        const upper = String(key).trim().toUpperCase();
+        // MAC address
+        if (upper.match(/^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/i)) return { type: "mac", value: upper };
+        // iBeacon UUID-MAJOR-MINOR
+        const uuidPattern = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+        const m = upper.match(uuidPattern);
+        if (m) {
+          const uuid = m[0];
+          const rest = upper.slice(uuid.length + 1);
+          const parts = rest.split("-");
+          if (parts.length >= 2) return { type: "ibeacon", uuid, major: parts[0], minor: parts[1] };
+          return { type: "ibeacon", uuid, major: parts[0] || "0", minor: "0" };
+        }
+        return null;
+      };
+      // Build sets/lists of tracked types for fast lookup
+      _trackedMacs = new Set(_tracked.map(k => _parseTrackedKey(k)?.value).filter(Boolean));
+      _trackedIbeacons = new Set(_tracked.map(k => {
+        const p = _parseTrackedKey(k);
+        return p && p.type === "ibeacon" ? `${p.uuid}-${p.major}-${p.minor}` : null;
+      }).filter(Boolean));
+      _isTracked = (d) => {
+        // Check MAC address
+        const dmac = String(d.address || "").trim().toUpperCase();
+        if (_trackedMacs.has(dmac)) return true;
+        // Check iBeacon UUID-Major-Minor
+        if (d.ibeacon) {
+          const ibkey = `${d.ibeacon.uuid}-${d.ibeacon.major}-${d.ibeacon.minor}`.toUpperCase();
+          if (_trackedIbeacons.has(ibkey)) return true;
+        }
+        return false;
+      };
       if (scanners.length === 0) {
         let rows = devices.map(d => `
           <tr><td><input type="checkbox" data-track-addr="${this._esc(String(d.address || "").toUpperCase())}" ${_isTracked(d) ? "checked" : ""} title="Show on Home map"></td><td><code>${this._esc(d.address)}</code></td><td>${this._esc(d.name)}</td><td>${d.ibeacon ? this._esc(d.ibeacon.uuid) + " " + d.ibeacon.major + "/" + d.ibeacon.minor : "N/A"}</td><td>N/A</td></tr>

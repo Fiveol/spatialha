@@ -14,6 +14,7 @@ from .storage import (
     _async_load_tracked,
     _async_save_settings,
     _async_save_tracked,
+    _tracking_key,
 )
 
 
@@ -105,15 +106,23 @@ async def handle_tracked_set(
     connection: websocket_api.ActiveConnection,
     msg: dict,
 ) -> None:
-    """Track or untrack a single BLE address and persist."""
+    """Track or untrack a single BLE address or iBeacon identifier and persist.
+
+    The `address` field accepts either a MAC address or a UUID-Major-Minor
+    identifier (e.g. "00000000-0000-0000-0000-000000000000-1-2").
+    IBeacons with different MACs but the same UUID/Major/Minor are deduplicated.
+    """
     try:
-        addr = str(msg.get("address", "")).strip().upper()
+        raw = str(msg.get("address", "")).strip()
         on = bool(msg.get("tracked"))
+        key = _tracking_key(raw)
+        if not key:
+            raise ValueError("Invalid address/identifier format")
         current = await _async_load_tracked(hass)
-        if on and addr and addr not in current:
-            current.append(addr)
-        elif not on and addr in current:
-            current.remove(addr)
+        if on and key and key not in current:
+            current.append(key)
+        elif not on and key in current:
+            current.remove(key)
         tracked = await _async_save_tracked(hass, current)
         connection.send_result(msg["id"], {"devices": tracked})
     except Exception as err:  # noqa: BLE001

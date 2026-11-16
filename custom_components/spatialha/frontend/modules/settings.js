@@ -31,9 +31,17 @@ export const SettingsMixin = {
       }
     },
 
+    // Helper: convert a raw address/key to the canonical tracking key used by storage.
+    _trackingKey(raw) {
+      // This function must match the Python _tracking_key logic.
+      // For simplicity, we just uppercase and use as-is; the backend _tracking_key
+      // will normalize iBeacon UUID-Major-Minor formats.
+      return String(raw || "").trim().toUpperCase();
+    },
+
     async _setTracked(address, on) {
       if (!this._hass) return;
-      const addr = String(address || "").toUpperCase();
+      const addr = this._trackingKey(address);
       if (!addr) return;
       // Optimistic local update so the checkbox feels instant.
       const cur = Array.isArray(this._trackedDevices) ? [...this._trackedDevices] : [];
